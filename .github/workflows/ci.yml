@@ -10,6 +10,9 @@ env:
   CARGO_TERM_COLOR: always
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
+  # CI optimizations
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
 
 jobs:
   # Frontend checks
@@ -42,10 +45,10 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
-  # Rust format check (fast, no system deps needed)
+  # Rust format check (fast, no system deps needed, ARM64 for speed)
   rust-fmt:
     name: Rust Format
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +86,7 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Clippy
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked -- -D warnings
 
   # Rust test (parallel with clippy)
   rust-test:
@@ -109,4 +112,4 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Test
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked
