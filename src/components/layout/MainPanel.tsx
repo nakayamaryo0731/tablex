@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SqlEditor } from "../editor";
 import { ResultGrid } from "../result";
+import { ErDiagram } from "../er-diagram";
 import { useQueryStore } from "../../store/queryStore";
 import { useConnectionStore } from "../../store/connectionStore";
 
@@ -100,8 +101,8 @@ function QueryPanel() {
 
 function ErDiagramPanel() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-white text-gray-400 dark:bg-gray-900">
-      ER Diagram (React Flow)
+    <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
+      <ErDiagram />
     </div>
   );
 }

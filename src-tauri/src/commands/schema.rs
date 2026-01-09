@@ -126,3 +126,64 @@ pub async fn get_schemas(state: State<'_, AppState>) -> Result<Vec<SchemaInfo>, 
 
     Ok(schemas)
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForeignKeyInfo {
+    pub constraint_name: String,
+    pub source_schema: String,
+    pub source_table: String,
+    pub source_column: String,
+    pub target_schema: String,
+    pub target_table: String,
+    pub target_column: String,
+}
+
+#[tauri::command]
+pub async fn get_foreign_keys(
+    schema_name: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<ForeignKeyInfo>, AppError> {
+    let connection = state.connection.lock().await;
+    let db = connection.as_ref().ok_or(AppError::NotConnected)?;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            tc.constraint_name,
+            tc.table_schema as source_schema,
+            tc.table_name as source_table,
+            kcu.column_name as source_column,
+            ccu.table_schema as target_schema,
+            ccu.table_name as target_table,
+            ccu.column_name as target_column
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.constraint_column_usage ccu
+            ON ccu.constraint_name = tc.constraint_name
+            AND ccu.table_schema = tc.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+            AND tc.table_schema = $1
+        ORDER BY tc.table_name, tc.constraint_name
+        "#,
+    )
+    .bind(&schema_name)
+    .fetch_all(&db.pool)
+    .await?;
+
+    let foreign_keys: Vec<ForeignKeyInfo> = rows
+        .iter()
+        .map(|row| ForeignKeyInfo {
+            constraint_name: row.try_get("constraint_name").unwrap_or_default(),
+            source_schema: row.try_get("source_schema").unwrap_or_default(),
+            source_table: row.try_get("source_table").unwrap_or_default(),
+            source_column: row.try_get("source_column").unwrap_or_default(),
+            target_schema: row.try_get("target_schema").unwrap_or_default(),
+            target_table: row.try_get("target_table").unwrap_or_default(),
+            target_column: row.try_get("target_column").unwrap_or_default(),
+        })
+        .collect();
+
+    Ok(foreign_keys)
+}

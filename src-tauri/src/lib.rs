@@ -17,6 +17,7 @@ pub fn run() {
             commands::connection::get_connection_status,
             commands::query::execute_query,
             commands::schema::get_schemas,
+            commands::schema::get_foreign_keys,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
