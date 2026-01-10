@@ -21,6 +21,9 @@ pub enum AppError {
 
     #[error("Export error: {0}")]
     ExportError(String),
+
+    #[error("AI error: {0}")]
+    AiError(String),
 }
 
 impl Serialize for AppError {

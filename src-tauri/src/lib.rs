@@ -1,3 +1,4 @@
+mod ai;
 mod commands;
 mod db;
 mod error;
@@ -21,6 +22,7 @@ pub fn run() {
             commands::schema::get_foreign_keys,
             commands::schema::get_table_detail,
             commands::export::export_csv,
+            commands::ai::generate_sql,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

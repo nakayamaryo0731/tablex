@@ -45,4 +45,5 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 # Export
 csv = "1"
+reqwest = { version = "0.13.1", features = ["json"] }
 

@@ -2,28 +2,18 @@ import { useState } from "react";
 import { SqlEditor } from "../editor";
 import { ResultGrid } from "../result";
 import { ErDiagram } from "../er-diagram";
+import { AiQueryBar, AiSettingsDialog } from "../ai";
 import { useQueryStore } from "../../store/queryStore";
 import { useConnectionStore } from "../../store/connectionStore";
 
 export function MainPanel() {
   const [activeTab, setActiveTab] = useState<"query" | "er">("query");
+  const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* AI Query Bar */}
-      <div className="border-b border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🤖</span>
-          <input
-            type="text"
-            placeholder="Describe your query in natural language..."
-            className="flex-1 rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
-          />
-          <button className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            Generate
-          </button>
-        </div>
-      </div>
+      <AiQueryBar onSettingsClick={() => setIsAiSettingsOpen(true)} />
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
@@ -53,6 +43,12 @@ export function MainPanel() {
       <div className="flex flex-1 flex-col overflow-hidden">
         {activeTab === "query" ? <QueryPanel /> : <ErDiagramPanel />}
       </div>
+
+      {/* AI Settings Dialog */}
+      <AiSettingsDialog
+        isOpen={isAiSettingsOpen}
+        onClose={() => setIsAiSettingsOpen(false)}
+      />
     </div>
   );
 }
