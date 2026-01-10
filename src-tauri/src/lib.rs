@@ -23,6 +23,8 @@ pub fn run() {
             commands::schema::get_table_detail,
             commands::export::export_csv,
             commands::ai::generate_sql,
+            commands::settings::save_settings,
+            commands::settings::load_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
