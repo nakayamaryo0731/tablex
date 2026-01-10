@@ -1,4 +1,5 @@
 mod connection;
+pub mod queries;
 
 pub use connection::{ConnectionConfig, DatabaseConnection};
 

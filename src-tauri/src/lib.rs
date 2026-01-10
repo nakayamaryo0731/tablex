@@ -19,6 +19,7 @@ pub fn run() {
             commands::query::execute_query,
             commands::schema::get_schemas,
             commands::schema::get_foreign_keys,
+            commands::schema::get_table_detail,
             commands::export::export_csv,
         ])
         .run(tauri::generate_context!())

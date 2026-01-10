@@ -3,7 +3,11 @@ import { useSchemaStore } from "../../store/schemaStore";
 import { useConnectionStore } from "../../store/connectionStore";
 import type { SchemaInfo, TableInfo, ColumnInfo } from "../../types/schema";
 
-export function SchemaTree() {
+interface SchemaTreeProps {
+  onTableSelect?: (schemaName: string, tableName: string) => void;
+}
+
+export function SchemaTree({ onTableSelect }: SchemaTreeProps) {
   const { schemas, isLoading, error, fetchSchemas, clearSchemas } =
     useSchemaStore();
   const { isConnected } = useConnectionStore();
@@ -39,13 +43,22 @@ export function SchemaTree() {
   return (
     <div className="flex-1 overflow-auto p-2">
       {schemas.map((schema) => (
-        <SchemaNode key={schema.name} schema={schema} />
+        <SchemaNode
+          key={schema.name}
+          schema={schema}
+          onTableSelect={onTableSelect}
+        />
       ))}
     </div>
   );
 }
 
-function SchemaNode({ schema }: { schema: SchemaInfo }) {
+interface SchemaNodeProps {
+  schema: SchemaInfo;
+  onTableSelect?: (schemaName: string, tableName: string) => void;
+}
+
+function SchemaNode({ schema, onTableSelect }: SchemaNodeProps) {
   const [isExpanded, setIsExpanded] = useState(schema.name === "public");
 
   return (
@@ -64,7 +77,11 @@ function SchemaNode({ schema }: { schema: SchemaInfo }) {
       {isExpanded && (
         <div className="ml-4">
           {schema.tables.map((table) => (
-            <TableNode key={`${schema.name}.${table.name}`} table={table} />
+            <TableNode
+              key={`${schema.name}.${table.name}`}
+              table={table}
+              onTableSelect={onTableSelect}
+            />
           ))}
         </div>
       )}
@@ -72,14 +89,29 @@ function SchemaNode({ schema }: { schema: SchemaInfo }) {
   );
 }
 
-function TableNode({ table }: { table: TableInfo }) {
+interface TableNodeProps {
+  table: TableInfo;
+  onTableSelect?: (schemaName: string, tableName: string) => void;
+}
+
+function TableNode({ table, onTableSelect }: TableNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleClick = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const handleDoubleClick = () => {
+    onTableSelect?.(table.schema, table.name);
+  };
 
   return (
     <div>
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+        title="Double-click to view details"
       >
         <ChevronIcon expanded={isExpanded} />
         <TableIcon />

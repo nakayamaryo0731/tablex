@@ -26,3 +26,26 @@ export interface ForeignKeyInfo {
   target_table: string;
   target_column: string;
 }
+
+export interface IndexInfo {
+  name: string;
+  columns: string[];
+  is_unique: boolean;
+  is_primary: boolean;
+}
+
+export interface ConstraintInfo {
+  name: string;
+  constraint_type: string;
+  columns: string[];
+  definition: string | null;
+}
+
+export interface TableDetailInfo {
+  schema: string;
+  name: string;
+  columns: ColumnInfo[];
+  indexes: IndexInfo[];
+  constraints: ConstraintInfo[];
+  foreign_keys: ForeignKeyInfo[];
+}
