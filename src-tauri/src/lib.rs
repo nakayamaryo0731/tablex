@@ -9,6 +9,7 @@ use state::AppState;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             commands::connection::test_connection,
@@ -18,6 +19,7 @@ pub fn run() {
             commands::query::execute_query,
             commands::schema::get_schemas,
             commands::schema::get_foreign_keys,
+            commands::export::export_csv,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
