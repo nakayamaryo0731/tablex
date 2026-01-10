@@ -18,6 +18,9 @@ pub enum AppError {
 
     #[error("Invalid configuration: {0}")]
     InvalidConfig(String),
+
+    #[error("Export error: {0}")]
+    ExportError(String),
 }
 
 impl Serialize for AppError {
