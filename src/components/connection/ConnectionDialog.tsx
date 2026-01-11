@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ConnectionConfig } from "../../types/connection";
 import { useConnectionStore } from "../../store/connectionStore";
 
@@ -8,22 +8,42 @@ interface ConnectionDialogProps {
 }
 
 export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
-  const { testConnection, connect, isConnecting, error, clearError } =
-    useConnectionStore();
+  const {
+    testConnection,
+    connect,
+    isConnecting,
+    error,
+    clearError,
+    savedConnections,
+    loadSavedConnections,
+    saveConnection,
+    deleteConnection,
+    setDefaultConnection,
+    getConnectionPassword,
+    connectToSaved,
+  } = useConnectionStore();
 
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
   const [form, setForm] = useState<Omit<ConnectionConfig, "id">>({
-    name: "Local Dev",
+    name: "",
     host: "localhost",
     port: 5432,
-    database: "simulation",
+    database: "",
     username: "postgres",
-    password: "postgres",
+    password: "",
     ssl_mode: "disable",
   });
+  const [isDefault, setIsDefault] = useState(false);
 
   const [testResult, setTestResult] = useState<"success" | "error" | null>(
     null
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      loadSavedConnections();
+    }
+  }, [isOpen, loadSavedConnections]);
 
   if (!isOpen) return null;
 
@@ -39,10 +59,59 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
     clearError();
   };
 
+  const handleSelectConnection = async (id: string) => {
+    setSelectedConnectionId(id);
+    if (!id) {
+      // New connection
+      setForm({
+        name: "",
+        host: "localhost",
+        port: 5432,
+        database: "",
+        username: "postgres",
+        password: "",
+        ssl_mode: "disable",
+      });
+      setIsDefault(false);
+      return;
+    }
+
+    const saved = savedConnections.find((c) => c.id === id);
+    if (saved) {
+      try {
+        const password = await getConnectionPassword(id);
+        setForm({
+          name: saved.name,
+          host: saved.host,
+          port: saved.port,
+          database: saved.database,
+          username: saved.username,
+          password,
+          ssl_mode: saved.ssl_mode,
+        });
+        setIsDefault(saved.is_default);
+      } catch {
+        // Password not found, leave empty
+        setForm({
+          name: saved.name,
+          host: saved.host,
+          port: saved.port,
+          database: saved.database,
+          username: saved.username,
+          password: "",
+          ssl_mode: saved.ssl_mode,
+        });
+        setIsDefault(saved.is_default);
+      }
+    }
+    setTestResult(null);
+    clearError();
+  };
+
   const handleTest = async () => {
     const config: ConnectionConfig = {
       ...form,
-      id: crypto.randomUUID(),
+      id: selectedConnectionId || crypto.randomUUID(),
     };
 
     const success = await testConnection(config);
@@ -50,6 +119,19 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   };
 
   const handleConnect = async () => {
+    if (selectedConnectionId) {
+      const saved = savedConnections.find((c) => c.id === selectedConnectionId);
+      if (saved) {
+        try {
+          await connectToSaved(saved);
+          onClose();
+        } catch {
+          // Error is handled in store
+        }
+        return;
+      }
+    }
+
     const config: ConnectionConfig = {
       ...form,
       id: crypto.randomUUID(),
@@ -63,18 +145,86 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
     }
   };
 
+  const handleSave = async () => {
+    const id = selectedConnectionId || crypto.randomUUID();
+    try {
+      await saveConnection({
+        id,
+        ...form,
+        is_default: isDefault,
+      });
+      setSelectedConnectionId(id);
+      setTestResult(null);
+    } catch {
+      // Error is handled in store
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedConnectionId) return;
+    if (!confirm("Delete this connection?")) return;
+
+    try {
+      await deleteConnection(selectedConnectionId);
+      setSelectedConnectionId("");
+      setForm({
+        name: "",
+        host: "localhost",
+        port: 5432,
+        database: "",
+        username: "postgres",
+        password: "",
+        ssl_mode: "disable",
+      });
+      setIsDefault(false);
+    } catch {
+      // Error is handled in store
+    }
+  };
+
+  const handleSetDefault = async () => {
+    if (!selectedConnectionId) return;
+    try {
+      await setDefaultConnection(selectedConnectionId);
+      setIsDefault(true);
+    } catch {
+      // Error is handled in store
+    }
+  };
+
   const handleClose = () => {
     clearError();
     setTestResult(null);
+    setSelectedConnectionId("");
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
-        <h2 className="mb-4 text-lg font-semibold">New Connection</h2>
+        <h2 className="mb-4 text-lg font-semibold">Connection</h2>
 
         <div className="space-y-4">
+          {/* Saved Connections Dropdown */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Saved Connections
+            </label>
+            <select
+              value={selectedConnectionId}
+              onChange={(e) => handleSelectConnection(e.target.value)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
+            >
+              <option value="">New Connection</option>
+              {savedConnections.map((conn) => (
+                <option key={conn.id} value={conn.id}>
+                  {conn.name}
+                  {conn.is_default ? " (Default)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="mb-1 block text-sm font-medium">
               Connection Name
@@ -159,6 +309,20 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
             </select>
           </div>
 
+          {/* Default checkbox */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="isDefault"
+              checked={isDefault}
+              onChange={(e) => setIsDefault(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <label htmlFor="isDefault" className="text-sm">
+              Set as default (auto-connect on startup)
+            </label>
+          </div>
+
           {error && (
             <div className="rounded bg-red-100 p-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
               {error}
@@ -172,27 +336,56 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            onClick={handleClose}
-            className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleTest}
-            disabled={isConnecting}
-            className="rounded border border-blue-600 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-900/30"
-          >
-            Test
-          </button>
-          <button
-            onClick={handleConnect}
-            disabled={isConnecting}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isConnecting ? "Connecting..." : "Connect"}
-          </button>
+        <div className="mt-6 flex justify-between">
+          <div className="flex gap-2">
+            {selectedConnectionId && (
+              <>
+                <button
+                  onClick={handleDelete}
+                  className="rounded px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                >
+                  Delete
+                </button>
+                {!isDefault && (
+                  <button
+                    onClick={handleSetDefault}
+                    className="rounded px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                  >
+                    Set Default
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleClose}
+              className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isConnecting || !form.name}
+              className="rounded border border-green-600 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50 disabled:opacity-50 dark:hover:bg-green-900/30"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleTest}
+              disabled={isConnecting}
+              className="rounded border border-blue-600 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-900/30"
+            >
+              Test
+            </button>
+            <button
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isConnecting ? "Connecting..." : "Connect"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
