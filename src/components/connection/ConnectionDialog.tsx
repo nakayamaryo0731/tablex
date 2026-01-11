@@ -134,6 +134,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
 
   const handleSave = async () => {
     const id = selectedConnectionId || crypto.randomUUID();
+    clearError();
     try {
       await saveConnection({
         id,
@@ -186,9 +187,17 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
     onClose();
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleConnect();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800"
+      >
         <h2 className="mb-4 text-lg font-semibold">Connection</h2>
 
         <div className="space-y-4">
@@ -328,6 +337,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
             {selectedConnectionId && (
               <>
                 <button
+                  type="button"
                   onClick={handleDelete}
                   className="rounded px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                 >
@@ -335,6 +345,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
                 </button>
                 {!isDefault && (
                   <button
+                    type="button"
                     onClick={handleSetDefault}
                     className="rounded px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
                   >
@@ -346,12 +357,14 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={handleClose}
               className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSave}
               disabled={isConnecting || !form.name}
               className="rounded border border-green-600 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50 disabled:opacity-50 dark:hover:bg-green-900/30"
@@ -359,6 +372,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
               Save
             </button>
             <button
+              type="button"
               onClick={handleTest}
               disabled={isConnecting}
               className="rounded border border-blue-600 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-900/30"
@@ -366,7 +380,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
               Test
             </button>
             <button
-              onClick={handleConnect}
+              type="submit"
               disabled={isConnecting}
               className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
@@ -374,7 +388,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

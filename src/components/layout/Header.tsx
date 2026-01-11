@@ -1,17 +1,21 @@
-import { useState } from "react";
 import { ConnectionDialog } from "../connection";
 import { useConnectionStore } from "../../store/connectionStore";
 
 export function Header() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { isConnected, connectionName, disconnect } = useConnectionStore();
+  const {
+    isConnected,
+    connectionName,
+    disconnect,
+    shouldShowConnectionDialog,
+    setShouldShowConnectionDialog,
+  } = useConnectionStore();
 
   return (
     <>
       <header className="flex h-12 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-gray-800">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsDialogOpen(true)}
+            onClick={() => setShouldShowConnectionDialog(true)}
             className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
           >
             + Connect
@@ -38,8 +42,8 @@ export function Header() {
       </header>
 
       <ConnectionDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        isOpen={shouldShowConnectionDialog}
+        onClose={() => setShouldShowConnectionDialog(false)}
       />
     </>
   );

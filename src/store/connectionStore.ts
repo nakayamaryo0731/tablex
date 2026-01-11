@@ -13,6 +13,7 @@ interface ConnectionState {
   error: string | null;
   savedConnections: SavedConnection[];
   isLoadingSaved: boolean;
+  shouldShowConnectionDialog: boolean;
 
   checkConnectionStatus: () => Promise<void>;
   testConnection: (config: ConnectionConfig) => Promise<boolean>;
@@ -28,6 +29,7 @@ interface ConnectionState {
   getConnectionPassword: (id: string) => Promise<string>;
   getDefaultConnection: () => Promise<SavedConnection | null>;
   connectToSaved: (saved: SavedConnection) => Promise<void>;
+  setShouldShowConnectionDialog: (show: boolean) => void;
 }
 
 export const useConnectionStore = create<ConnectionState>((set, get) => ({
@@ -37,6 +39,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   error: null,
   savedConnections: [],
   isLoadingSaved: false,
+  shouldShowConnectionDialog: false,
 
   checkConnectionStatus: async () => {
     try {
@@ -186,4 +189,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
       throw error;
     }
   },
+
+  setShouldShowConnectionDialog: (show: boolean) =>
+    set({ shouldShowConnectionDialog: show }),
 }));
