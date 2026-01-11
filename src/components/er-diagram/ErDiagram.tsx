@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   Controls,
@@ -11,11 +11,12 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import Dagre from "@dagrejs/dagre";
 import { invoke } from "@tauri-apps/api/core";
 import { TableNode, type TableNodeData } from "./TableNode";
 import { useSchemaStore } from "../../store/schemaStore";
 import { useConnectionStore } from "../../store/connectionStore";
-import type { ForeignKeyInfo } from "../../types/schema";
+import type { ForeignKeyInfo, TableInfo } from "../../types/schema";
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -23,8 +24,105 @@ const nodeTypes = {
 
 type TableNodeType = Node<TableNodeData>;
 
+// Calculate node dimensions based on columns
+function getNodeDimensions(table: TableInfo) {
+  const NODE_WIDTH = 220;
+  const NODE_HEIGHT_PER_COL = 28;
+  const HEADER_HEIGHT = 40;
+  return {
+    width: NODE_WIDTH,
+    height: HEADER_HEIGHT + table.columns.length * NODE_HEIGHT_PER_COL,
+  };
+}
+
+// Apply dagre layout to nodes and edges
+function applyDagreLayout(
+  tables: TableInfo[],
+  foreignKeys: ForeignKeyInfo[],
+  focusedTableName: string | null,
+  handleFocusTable: (tableName: string) => void
+): { nodes: TableNodeType[]; edges: Edge[] } {
+  const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+
+  // Configure dagre for horizontal layout
+  g.setGraph({
+    rankdir: "LR", // Left to Right
+    nodesep: 80, // Horizontal separation between nodes
+    ranksep: 120, // Vertical separation between ranks
+    marginx: 20,
+    marginy: 20,
+  });
+
+  // Add nodes to dagre
+  tables.forEach((table) => {
+    const { width, height } = getNodeDimensions(table);
+    g.setNode(table.name, { width, height });
+  });
+
+  // Add edges to dagre
+  foreignKeys.forEach((fk) => {
+    // Only add edge if both source and target exist in tables
+    if (
+      tables.some((t) => t.name === fk.source_table) &&
+      tables.some((t) => t.name === fk.target_table)
+    ) {
+      g.setEdge(fk.source_table, fk.target_table);
+    }
+  });
+
+  // Run dagre layout
+  Dagre.layout(g);
+
+  // Create React Flow nodes with dagre positions
+  const nodes: TableNodeType[] = tables.map((table) => {
+    const nodeWithPosition = g.node(table.name);
+    const { width, height } = getNodeDimensions(table);
+
+    return {
+      id: table.name,
+      type: "tableNode",
+      // Dagre gives center position, convert to top-left
+      position: {
+        x: nodeWithPosition.x - width / 2,
+        y: nodeWithPosition.y - height / 2,
+      },
+      data: {
+        label: table.name,
+        columns: table.columns,
+        isFocused: table.name === focusedTableName,
+        onFocus: handleFocusTable,
+      },
+    };
+  });
+
+  // Create React Flow edges
+  const edges: Edge[] = foreignKeys
+    .filter(
+      (fk) =>
+        tables.some((t) => t.name === fk.source_table) &&
+        tables.some((t) => t.name === fk.target_table)
+    )
+    .map((fk) => ({
+      id: fk.constraint_name,
+      source: fk.source_table,
+      target: fk.target_table,
+      sourceHandle: `${fk.source_column}-source`,
+      targetHandle: `${fk.target_column}-target`,
+      type: "smoothstep",
+      animated: true,
+      style: { stroke: "#6366f1", strokeWidth: 2 },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: "#6366f1",
+      },
+    }));
+
+  return { nodes, edges };
+}
+
 export function ErDiagram() {
-  const { schemas } = useSchemaStore();
+  const { schemas, focusedTable, setFocusedTable, clearFocusedTable } =
+    useSchemaStore();
   const { isConnected } = useConnectionStore();
   const [foreignKeys, setForeignKeys] = useState<ForeignKeyInfo[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState<TableNodeType>([]);
@@ -48,7 +146,40 @@ export function ErDiagram() {
     return schema?.tables || [];
   }, [schemas, selectedSchema]);
 
-  // Generate nodes and edges from tables and foreign keys
+  // Get focused table name for current schema
+  const focusedTableName = useMemo(() => {
+    if (!focusedTable || focusedTable.schema !== selectedSchema) return null;
+    return focusedTable.table;
+  }, [focusedTable, selectedSchema]);
+
+  // Get related tables for focused table
+  const relatedTables = useMemo(() => {
+    if (!focusedTableName) return null;
+
+    const related = new Set<string>();
+    related.add(focusedTableName);
+
+    foreignKeys.forEach((fk) => {
+      if (fk.source_table === focusedTableName) {
+        related.add(fk.target_table);
+      }
+      if (fk.target_table === focusedTableName) {
+        related.add(fk.source_table);
+      }
+    });
+
+    return related;
+  }, [focusedTableName, foreignKeys]);
+
+  // Handle table focus from ER diagram click
+  const handleFocusTable = useCallback(
+    (tableName: string) => {
+      setFocusedTable(selectedSchema, tableName);
+    },
+    [selectedSchema, setFocusedTable]
+  );
+
+  // Generate nodes and edges from tables and foreign keys using dagre layout
   useEffect(() => {
     if (tables.length === 0) {
       setNodes([]);
@@ -56,60 +187,39 @@ export function ErDiagram() {
       return;
     }
 
-    // Calculate layout - simple grid layout
-    const COLS = 3;
-    const NODE_WIDTH = 220;
-    const NODE_HEIGHT_PER_COL = 28;
-    const HEADER_HEIGHT = 40;
-    const X_GAP = 80;
-    const Y_GAP = 60;
+    // Filter tables if focused
+    const filteredTables = relatedTables
+      ? tables.filter((t) => relatedTables.has(t.name))
+      : tables;
 
-    const newNodes: TableNodeType[] = tables.map((table, index) => {
-      const col = index % COLS;
-      const row = Math.floor(index / COLS);
+    // Filter edges if focused
+    const filteredForeignKeys = relatedTables
+      ? foreignKeys.filter(
+          (fk) =>
+            relatedTables.has(fk.source_table) &&
+            relatedTables.has(fk.target_table)
+        )
+      : foreignKeys;
 
-      // Calculate cumulative Y position based on previous rows
-      let y = 0;
-      for (let r = 0; r < row; r++) {
-        const maxHeightInRow = Math.max(
-          ...tables
-            .slice(r * COLS, (r + 1) * COLS)
-            .map((t) => HEADER_HEIGHT + t.columns.length * NODE_HEIGHT_PER_COL)
-        );
-        y += maxHeightInRow + Y_GAP;
-      }
-
-      return {
-        id: table.name,
-        type: "tableNode",
-        position: { x: col * (NODE_WIDTH + X_GAP), y },
-        data: {
-          label: table.name,
-          columns: table.columns,
-        },
-      };
-    });
-
-    const newEdges: Edge[] = foreignKeys.map((fk) => ({
-      id: fk.constraint_name,
-      source: fk.source_table,
-      target: fk.target_table,
-      sourceHandle: `${fk.source_column}-source`,
-      targetHandle: `${fk.target_column}-target`,
-      type: "smoothstep",
-      animated: true,
-      style: { stroke: "#6366f1", strokeWidth: 2 },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: "#6366f1",
-      },
-      label: fk.constraint_name,
-      labelStyle: { fontSize: 10, fill: "#6b7280" },
-    }));
+    // Apply dagre layout
+    const { nodes: newNodes, edges: newEdges } = applyDagreLayout(
+      filteredTables,
+      filteredForeignKeys,
+      focusedTableName,
+      handleFocusTable
+    );
 
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [tables, foreignKeys, setNodes, setEdges]);
+  }, [
+    tables,
+    foreignKeys,
+    setNodes,
+    setEdges,
+    relatedTables,
+    focusedTableName,
+    handleFocusTable,
+  ]);
 
   if (!isConnected) {
     return (
@@ -135,7 +245,10 @@ export function ErDiagram() {
         </label>
         <select
           value={selectedSchema}
-          onChange={(e) => setSelectedSchema(e.target.value)}
+          onChange={(e) => {
+            setSelectedSchema(e.target.value);
+            clearFocusedTable();
+          }}
           className="rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
         >
           {schemas.map((schema) => (
@@ -144,9 +257,24 @@ export function ErDiagram() {
             </option>
           ))}
         </select>
-        <span className="ml-2 text-xs text-gray-500">
+        <span className="text-xs text-gray-500">
           {tables.length} tables, {foreignKeys.length} relationships
         </span>
+
+        {focusedTableName && (
+          <>
+            <div className="mx-2 h-4 border-l border-gray-300 dark:border-gray-600" />
+            <span className="text-xs text-yellow-600 dark:text-yellow-400">
+              Focused: {focusedTableName}
+            </span>
+            <button
+              onClick={clearFocusedTable}
+              className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+            >
+              Show All
+            </button>
+          </>
+        )}
       </div>
       <div className="flex-1">
         <ReactFlow

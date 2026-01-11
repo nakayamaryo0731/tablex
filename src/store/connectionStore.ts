@@ -8,6 +8,7 @@ interface ConnectionState {
   isConnecting: boolean;
   error: string | null;
 
+  checkConnectionStatus: () => Promise<void>;
   testConnection: (config: ConnectionConfig) => Promise<boolean>;
   connect: (config: ConnectionConfig) => Promise<void>;
   disconnect: () => Promise<void>;
@@ -19,6 +20,21 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
   connectionName: null,
   isConnecting: false,
   error: null,
+
+  checkConnectionStatus: async () => {
+    try {
+      const connectionName = await invoke<string | null>(
+        "get_connection_status"
+      );
+      if (connectionName) {
+        set({ isConnected: true, connectionName });
+      } else {
+        set({ isConnected: false, connectionName: null });
+      }
+    } catch (error) {
+      console.error("Failed to check connection status:", error);
+    }
+  },
 
   testConnection: async (config: ConnectionConfig) => {
     try {
