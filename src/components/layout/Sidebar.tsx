@@ -1,22 +1,16 @@
-import { useState } from "react";
-import { SchemaTree, TableDetailPanel } from "../schema";
+import { SchemaTree } from "../schema";
+import { useQueryStore } from "../../store/queryStore";
 
 interface SidebarProps {
   width?: number;
 }
 
 export function Sidebar({ width = 240 }: SidebarProps) {
-  const [selectedTable, setSelectedTable] = useState<{
-    schema: string;
-    table: string;
-  } | null>(null);
+  const loadTableData = useQueryStore((state) => state.loadTableData);
 
   const handleTableSelect = (schemaName: string, tableName: string) => {
-    setSelectedTable({ schema: schemaName, table: tableName });
-  };
-
-  const handleCloseDetail = () => {
-    setSelectedTable(null);
+    // Double-click opens table in CRUD mode
+    loadTableData(schemaName, tableName);
   };
 
   return (
@@ -24,22 +18,12 @@ export function Sidebar({ width = 240 }: SidebarProps) {
       className="flex flex-col border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
       style={{ width }}
     >
-      {selectedTable ? (
-        <TableDetailPanel
-          schemaName={selectedTable.schema}
-          tableName={selectedTable.table}
-          onClose={handleCloseDetail}
-        />
-      ) : (
-        <>
-          <div className="border-b border-gray-200 px-3 py-2 dark:border-gray-700">
-            <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Schema
-            </div>
-          </div>
-          <SchemaTree onTableSelect={handleTableSelect} />
-        </>
-      )}
+      <div className="border-b border-gray-200 px-3 py-2 dark:border-gray-700">
+        <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Schema
+        </div>
+      </div>
+      <SchemaTree onTableSelect={handleTableSelect} />
     </aside>
   );
 }

@@ -31,6 +31,11 @@ pub fn run() {
             commands::connections::set_default_connection,
             commands::connections::get_connection_password,
             commands::connections::get_default_connection,
+            commands::table_data::get_table_data,
+            commands::table_data::get_table_row_count,
+            commands::table_data::insert_rows,
+            commands::table_data::update_rows,
+            commands::table_data::delete_rows,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

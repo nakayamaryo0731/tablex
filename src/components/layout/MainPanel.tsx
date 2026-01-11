@@ -12,7 +12,16 @@ export function MainPanel() {
   const [activeTab, setActiveTab] = useState<"query" | "er">("query");
   const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const { executeQuery, query, isExecuting, result } = useQueryStore();
+  const {
+    executeQuery,
+    query,
+    isExecuting,
+    result,
+    isCrudMode,
+    currentSchema,
+    currentTable,
+    exitCrudMode,
+  } = useQueryStore();
   const { isConnected } = useConnectionStore();
 
   const handleExportCsv = async () => {
@@ -68,7 +77,38 @@ export function MainPanel() {
         >
           ER Diagram
         </button>
+
+        {/* CRUD mode indicator */}
+        {isCrudMode && currentTable && (
+          <div className="ml-4 flex items-center gap-2 border-l border-gray-300 pl-4 dark:border-gray-600">
+            <span className="text-xs text-gray-500">
+              {currentSchema}.{currentTable}
+            </span>
+            <button
+              onClick={exitCrudMode}
+              className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              title="Exit table view"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+
         <div className="flex-1" />
+
+        {/* Query buttons - always visible */}
         <button
           onClick={handleExportCsv}
           disabled={!result || isExporting}
