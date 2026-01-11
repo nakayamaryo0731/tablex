@@ -23,13 +23,6 @@ export function AiQueryBar({ onSettingsClick }: AiQueryBarProps) {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleGenerate();
-    }
-  };
-
   const isConfigured =
     settings.provider === "Claude"
       ? !!settings.claudeApiKey
@@ -50,7 +43,6 @@ export function AiQueryBar({ onSettingsClick }: AiQueryBarProps) {
           type="text"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder={
             !isConnected
               ? "Connect to a database first..."

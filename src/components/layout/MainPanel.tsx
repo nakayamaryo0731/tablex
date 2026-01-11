@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
 import { SqlEditor } from "../editor";
 import { ResultGrid } from "../result";
 import { ErDiagram } from "../er-diagram";
@@ -9,14 +11,43 @@ import { useConnectionStore } from "../../store/connectionStore";
 export function MainPanel() {
   const [activeTab, setActiveTab] = useState<"query" | "er">("query");
   const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const { executeQuery, query, isExecuting, result } = useQueryStore();
+  const { isConnected } = useConnectionStore();
+
+  const handleExportCsv = async () => {
+    if (!result) return;
+
+    try {
+      setIsExporting(true);
+      const filePath = await save({
+        defaultPath: "query_result.csv",
+        filters: [{ name: "CSV", extensions: ["csv"] }],
+      });
+
+      if (filePath) {
+        await invoke("export_csv", {
+          data: {
+            columns: result.columns.map((c) => c.name),
+            rows: result.rows,
+          },
+          filePath,
+        });
+      }
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* AI Query Bar */}
       <AiQueryBar onSettingsClick={() => setIsAiSettingsOpen(true)} />
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      {/* Tabs and Run Button */}
+      <div className="flex items-center border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
         <button
           className={`px-4 py-2 text-sm font-medium ${
             activeTab === "query"
@@ -37,6 +68,21 @@ export function MainPanel() {
         >
           ER Diagram
         </button>
+        <div className="flex-1" />
+        <button
+          onClick={handleExportCsv}
+          disabled={!result || isExporting}
+          className="mr-2 rounded bg-gray-600 px-3 py-1 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isExporting ? "Exporting..." : "CSV"}
+        </button>
+        <button
+          onClick={executeQuery}
+          disabled={!isConnected || !query.trim() || isExecuting}
+          className="mr-2 rounded bg-green-600 px-3 py-1 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isExecuting ? "Running..." : "Run"}
+        </button>
       </div>
 
       {/* Content */}
@@ -54,38 +100,63 @@ export function MainPanel() {
 }
 
 function QueryPanel() {
-  const { executeQuery, isExecuting } = useQueryStore();
-  const { isConnected } = useConnectionStore();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [editorHeight, setEditorHeight] = useState(200);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleRun = () => {
-    if (isConnected) {
-      executeQuery();
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newHeight = e.clientY - containerRect.top;
+      const minHeight = 100;
+      const maxHeight = containerRect.height - 100;
+
+      setEditorHeight(Math.min(Math.max(newHeight, minHeight), maxHeight));
+    },
+    [isDragging]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "row-resize";
+      document.body.style.userSelect = "none";
     }
-  };
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div ref={containerRef} className="flex flex-1 flex-col overflow-hidden">
       {/* SQL Editor */}
-      <div className="h-1/2 min-h-[150px] border-b border-gray-200 dark:border-gray-700">
+      <div style={{ height: editorHeight }} className="min-h-[100px]">
         <SqlEditor />
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
-        <button
-          onClick={handleRun}
-          disabled={!isConnected || isExecuting}
-          className="flex items-center gap-1 rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <PlayIcon />
-          {isExecuting ? "Running..." : "Run"}
-        </button>
-        {!isConnected && (
-          <span className="text-xs text-gray-500">
-            Connect to a database first
-          </span>
-        )}
-      </div>
+      {/* Resizer */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={`h-1 cursor-row-resize bg-gray-200 hover:bg-blue-400 dark:bg-gray-700 dark:hover:bg-blue-500 ${
+          isDragging ? "bg-blue-500 dark:bg-blue-500" : ""
+        }`}
+      />
 
       {/* Results */}
       <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
@@ -100,17 +171,5 @@ function ErDiagramPanel() {
     <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
       <ErDiagram />
     </div>
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-      <path
-        fillRule="evenodd"
-        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-        clipRule="evenodd"
-      />
-    </svg>
   );
 }
