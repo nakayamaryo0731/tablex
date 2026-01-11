@@ -15,6 +15,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^1.1.8",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-table": "^8.21.3",
     "@tauri-apps/api": "^2",
@@ -29,6 +30,7 @@
     "@eslint/js": "^9.23.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/cli": "^2",
+    "@types/dagre": "^0.7.53",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",

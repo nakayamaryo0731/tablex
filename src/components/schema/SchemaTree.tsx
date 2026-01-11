@@ -96,8 +96,17 @@ interface TableNodeProps {
 
 function TableNode({ table, onTableSelect }: TableNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { focusedTable, setFocusedTable } = useSchemaStore();
+
+  const isFocused =
+    focusedTable?.schema === table.schema && focusedTable?.table === table.name;
 
   const handleClick = () => {
+    setFocusedTable(table.schema, table.name);
+  };
+
+  const handleExpandClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsExpanded(!isExpanded);
   };
 
@@ -110,10 +119,16 @@ function TableNode({ table, onTableSelect }: TableNodeProps) {
       <button
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
-        className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-        title="Double-click to view details"
+        className={`flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm ${
+          isFocused
+            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+            : "hover:bg-gray-100 dark:hover:bg-gray-700"
+        }`}
+        title="Click to focus in ER diagram"
       >
-        <ChevronIcon expanded={isExpanded} />
+        <span onClick={handleExpandClick}>
+          <ChevronIcon expanded={isExpanded} />
+        </span>
         <TableIcon />
         <span>{table.name}</span>
         <span className="ml-auto text-xs text-gray-400">

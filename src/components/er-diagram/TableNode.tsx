@@ -5,6 +5,8 @@ import type { ColumnInfo } from "../../types/schema";
 export interface TableNodeData {
   label: string;
   columns: ColumnInfo[];
+  isFocused?: boolean;
+  onFocus?: (tableName: string) => void;
   [key: string]: unknown;
 }
 
@@ -13,11 +15,28 @@ interface TableNodeProps {
 }
 
 export const TableNode = memo(function TableNode({ data }: TableNodeProps) {
-  const { label, columns } = data;
+  const { label, columns, isFocused, onFocus } = data;
+
+  const handleClick = () => {
+    if (onFocus) {
+      onFocus(label);
+    }
+  };
 
   return (
-    <div className="min-w-[180px] rounded border border-gray-300 bg-white shadow-md dark:border-gray-600 dark:bg-gray-800">
-      <div className="rounded-t bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
+    <div
+      onClick={handleClick}
+      className={`min-w-[180px] cursor-pointer rounded border-2 bg-white shadow-md transition-all dark:bg-gray-800 ${
+        isFocused
+          ? "border-yellow-500 ring-2 ring-yellow-300"
+          : "border-gray-300 hover:border-blue-400 dark:border-gray-600"
+      }`}
+    >
+      <div
+        className={`rounded-t px-3 py-2 text-sm font-semibold text-white ${
+          isFocused ? "bg-yellow-600" : "bg-blue-600"
+        }`}
+      >
         {label}
       </div>
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
