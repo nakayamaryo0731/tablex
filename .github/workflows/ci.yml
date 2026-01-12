@@ -45,6 +45,9 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: Test
+        run: pnpm test
+
   # Rust format check (fast, no system deps needed, ARM64 for speed)
   rust-fmt:
     name: Rust Format
