@@ -1,5 +1,13 @@
+import { Database, Settings, Unplug } from "lucide-react";
 import { ConnectionDialog } from "../connection";
 import { useConnectionStore } from "../../store/connectionStore";
+import { Button } from "../ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 
 export function Header() {
   const {
@@ -11,33 +19,54 @@ export function Header() {
   } = useConnectionStore();
 
   return (
-    <>
-      <header className="flex h-12 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-gray-800">
+    <TooltipProvider>
+      <header className="flex h-11 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 shadow-sm">
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShouldShowConnectionDialog(true)}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            className="gap-1.5"
           >
-            + Connect
-          </button>
+            <Database className="h-3.5 w-3.5" />
+            Connect
+          </Button>
+
           {isConnected && connectionName && (
             <>
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {connectionName}
-              </span>
-              <button
-                onClick={disconnect}
-                className="rounded px-2 py-1 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
-              >
-                Disconnect
-              </button>
+              <div className="flex items-center gap-2 rounded-[var(--radius)] bg-[hsl(var(--accent))] px-2.5 py-1">
+                <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
+                <span className="text-[13px] font-medium">
+                  {connectionName}
+                </span>
+              </div>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={disconnect}
+                    className="text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10"
+                  >
+                    <Unplug className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Disconnect</TooltipContent>
+              </Tooltip>
             </>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <button className="rounded p-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700">
-            <SettingsIcon />
-          </button>
+
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon-sm">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Settings</TooltipContent>
+          </Tooltip>
         </div>
       </header>
 
@@ -45,30 +74,6 @@ export function Header() {
         isOpen={shouldShowConnectionDialog}
         onClose={() => setShouldShowConnectionDialog(false)}
       />
-    </>
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <svg
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-    </svg>
+    </TooltipProvider>
   );
 }

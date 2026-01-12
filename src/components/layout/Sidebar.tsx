@@ -1,5 +1,6 @@
 import { SchemaTree } from "../schema";
 import { useQueryStore } from "../../store/queryStore";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface SidebarProps {
   width?: number;
@@ -15,15 +16,17 @@ export function Sidebar({ width = 240 }: SidebarProps) {
 
   return (
     <aside
-      className="flex flex-col border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
+      className="flex flex-col border-r border-[hsl(var(--sidebar-border))] bg-[hsl(var(--sidebar))]"
       style={{ width }}
     >
-      <div className="border-b border-gray-200 px-3 py-2 dark:border-gray-700">
-        <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+      <div className="border-b border-[hsl(var(--sidebar-border))] px-3 py-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
           Schema
         </div>
       </div>
-      <SchemaTree onTableSelect={handleTableSelect} />
+      <ScrollArea className="flex-1">
+        <SchemaTree onTableSelect={handleTableSelect} />
+      </ScrollArea>
     </aside>
   );
 }

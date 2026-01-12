@@ -1,12 +1,27 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
+import { Play, Download, X, FileSpreadsheet } from "lucide-react";
 import { SqlEditor } from "../editor";
 import { ResultGrid } from "../result";
 import { ErDiagram } from "../er-diagram";
-import { AiQueryBar, AiSettingsDialog } from "../ai";
+import { AiQueryBar, AiSettingsDialog, QueryHistory } from "../ai";
 import { useQueryStore } from "../../store/queryStore";
 import { useConnectionStore } from "../../store/connectionStore";
+import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
+import { cn } from "../../lib/utils";
 
 export function MainPanel() {
   const [activeTab, setActiveTab] = useState<"query" | "er">("query");
@@ -51,91 +66,116 @@ export function MainPanel() {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      {/* AI Query Bar */}
-      <AiQueryBar onSettingsClick={() => setIsAiSettingsOpen(true)} />
+    <TooltipProvider>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* AI Query Bar + History */}
+        <div className="flex h-24 shrink-0">
+          <div className="w-3/5 min-w-0">
+            <AiQueryBar onSettingsClick={() => setIsAiSettingsOpen(true)} />
+          </div>
+          <div className="w-2/5">
+            <QueryHistory />
+          </div>
+        </div>
 
-      {/* Tabs and Run Button */}
-      <div className="flex items-center border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-        <button
-          className={`px-4 py-2 text-sm font-medium ${
-            activeTab === "query"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-          }`}
-          onClick={() => setActiveTab("query")}
-        >
-          Query
-        </button>
-        <button
-          className={`px-4 py-2 text-sm font-medium ${
-            activeTab === "er"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-          }`}
-          onClick={() => setActiveTab("er")}
-        >
-          ER Diagram
-        </button>
-
-        {/* CRUD mode indicator */}
-        {isCrudMode && currentTable && (
-          <div className="ml-4 flex items-center gap-2 border-l border-gray-300 pl-4 dark:border-gray-600">
-            <span className="text-xs text-gray-500">
-              {currentSchema}.{currentTable}
-            </span>
+        {/* Tabs and Run Button */}
+        <div className="flex items-center border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2">
+          <div className="flex items-center gap-1">
             <button
-              onClick={exitCrudMode}
-              className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              title="Exit table view"
+              className={cn(
+                "px-4 py-2.5 text-[13px] font-medium transition-colors rounded-t-[var(--radius-sm)]",
+                activeTab === "query"
+                  ? "border-b-2 border-[hsl(var(--primary))] text-[hsl(var(--primary))] bg-[hsl(var(--accent))]/50"
+                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]/30"
+              )}
+              onClick={() => setActiveTab("query")}
             >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              Query
+            </button>
+            <button
+              className={cn(
+                "px-4 py-2.5 text-[13px] font-medium transition-colors rounded-t-[var(--radius-sm)]",
+                activeTab === "er"
+                  ? "border-b-2 border-[hsl(var(--primary))] text-[hsl(var(--primary))] bg-[hsl(var(--accent))]/50"
+                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]/30"
+              )}
+              onClick={() => setActiveTab("er")}
+            >
+              ER Diagram
             </button>
           </div>
-        )}
 
-        <div className="flex-1" />
+          {/* CRUD mode indicator */}
+          {isCrudMode && currentTable && (
+            <div className="ml-4 flex items-center gap-3 border-l border-[hsl(var(--border))] pl-4">
+              <span className="font-[var(--font-mono)] text-[13px] text-[hsl(var(--muted-foreground))]">
+                {currentSchema}.{currentTable}
+              </span>
+              <button
+                onClick={exitCrudMode}
+                className="rounded-[var(--radius-sm)] p-1 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))] transition-colors"
+                title="Exit table view"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
 
-        {/* Query buttons - always visible */}
-        <button
-          onClick={handleExportCsv}
-          disabled={!result || isExporting}
-          className="mr-2 rounded bg-gray-600 px-3 py-1 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isExporting ? "Exporting..." : "CSV"}
-        </button>
-        <button
-          onClick={executeQuery}
-          disabled={!isConnected || !query.trim() || isExecuting}
-          className="mr-2 rounded bg-green-600 px-3 py-1 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isExecuting ? "Running..." : "Run"}
-        </button>
+          <div className="flex-1" />
+
+          {/* Query buttons */}
+          <div className="flex items-center gap-2 pr-2">
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={!result || isExporting}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Export</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCsv}>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="success"
+                  size="icon-sm"
+                  onClick={executeQuery}
+                  disabled={!isConnected || !query.trim() || isExecuting}
+                >
+                  <Play className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Run Query</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {activeTab === "query" ? <QueryPanel /> : <ErDiagramPanel />}
+        </div>
+
+        {/* AI Settings Dialog */}
+        <AiSettingsDialog
+          isOpen={isAiSettingsOpen}
+          onClose={() => setIsAiSettingsOpen(false)}
+        />
       </div>
-
-      {/* Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {activeTab === "query" ? <QueryPanel /> : <ErDiagramPanel />}
-      </div>
-
-      {/* AI Settings Dialog */}
-      <AiSettingsDialog
-        isOpen={isAiSettingsOpen}
-        onClose={() => setIsAiSettingsOpen(false)}
-      />
-    </div>
+    </TooltipProvider>
   );
 }
 
@@ -193,13 +233,14 @@ function QueryPanel() {
       {/* Resizer */}
       <div
         onMouseDown={handleMouseDown}
-        className={`h-1 cursor-row-resize bg-gray-200 hover:bg-blue-400 dark:bg-gray-700 dark:hover:bg-blue-500 ${
-          isDragging ? "bg-blue-500 dark:bg-blue-500" : ""
-        }`}
+        className={cn(
+          "h-1 cursor-row-resize bg-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--primary))]",
+          isDragging && "bg-[hsl(var(--primary))]"
+        )}
       />
 
       {/* Results */}
-      <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
+      <div className="flex-1 overflow-hidden bg-[hsl(var(--background))]">
         <ResultGrid />
       </div>
     </div>
@@ -208,7 +249,7 @@ function QueryPanel() {
 
 function ErDiagramPanel() {
   return (
-    <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
+    <div className="flex-1 overflow-hidden bg-[hsl(var(--background))]">
       <ErDiagram />
     </div>
   );

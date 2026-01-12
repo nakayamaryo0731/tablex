@@ -136,7 +136,7 @@ export function EditableCell({
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          className="h-full min-h-[60px] w-full resize-none border-0 bg-blue-50 px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-900/30"
+          className="h-full min-h-15 w-full resize-none border-0 bg-blue-50 px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-900/30"
           rows={3}
         />
       );

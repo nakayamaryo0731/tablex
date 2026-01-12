@@ -1,19 +1,25 @@
 import { useConnectionStore } from "../../store/connectionStore";
+import { cn } from "../../lib/utils";
 
 export function StatusBar() {
   const { isConnected, connectionName } = useConnectionStore();
 
   return (
-    <footer className="flex h-6 items-center justify-between border-t border-gray-200 bg-gray-100 px-4 text-xs dark:border-gray-700 dark:bg-gray-800">
+    <footer className="flex h-6 items-center justify-between border-t border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-3 text-[11px]">
       <div className="flex items-center gap-2">
         <span
-          className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-400"}`}
+          className={cn(
+            "h-1.5 w-1.5 rounded-full transition-all",
+            isConnected
+              ? "bg-[hsl(var(--success))] shadow-[0_0_4px_hsl(var(--success)/0.5)]"
+              : "bg-[hsl(var(--muted-foreground))]"
+          )}
         />
-        <span className="text-gray-600 dark:text-gray-400">
+        <span className="text-[hsl(var(--muted-foreground))]">
           {isConnected ? `Connected to ${connectionName}` : "Not connected"}
         </span>
       </div>
-      <div className="text-gray-500 dark:text-gray-400">v0.1.0</div>
+      <div className="text-[hsl(var(--muted-foreground))]">v0.1.0</div>
     </footer>
   );
 }

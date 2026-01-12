@@ -10,11 +10,23 @@ import type {
   PendingChange,
 } from "../types/query";
 
+export interface QueryHistoryItem {
+  id: string;
+  query: string;
+  executedAt: Date;
+  rowCount?: number;
+  executionTimeMs?: number;
+  error?: string;
+}
+
 interface QueryState {
   query: string;
   result: QueryResult | null;
   isExecuting: boolean;
   error: string | null;
+
+  // Query history
+  queryHistory: QueryHistoryItem[];
 
   // CRUD mode state
   tableData: TableData | null;
@@ -34,6 +46,7 @@ interface QueryState {
   executeQuery: () => Promise<void>;
   clearResult: () => void;
   clearError: () => void;
+  clearHistory: () => void;
 
   // CRUD actions
   loadTableData: (schema: string, table: string) => Promise<void>;
@@ -68,6 +81,9 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   isExecuting: false,
   error: null,
 
+  // Query history
+  queryHistory: [],
+
   // CRUD mode state
   tableData: null,
   currentSchema: null,
@@ -85,21 +101,50 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   setQuery: (query: string) => set({ query }),
 
   executeQuery: async () => {
-    const { query } = get();
+    const { query, queryHistory } = get();
     if (!query.trim()) return;
+
+    const historyItem: QueryHistoryItem = {
+      id: crypto.randomUUID(),
+      query: query.trim(),
+      executedAt: new Date(),
+    };
 
     try {
       set({ isExecuting: true, error: null, isCrudMode: false });
       const result = await invoke<QueryResult>("execute_query", { query });
-      set({ result, isExecuting: false, tableData: null });
+
+      // Update history with success info
+      historyItem.rowCount = result.row_count;
+      historyItem.executionTimeMs = result.execution_time_ms;
+
+      // Add to history (keep last 50)
+      const newHistory = [historyItem, ...queryHistory].slice(0, 50);
+
+      set({
+        result,
+        isExecuting: false,
+        tableData: null,
+        queryHistory: newHistory,
+      });
     } catch (error) {
-      set({ isExecuting: false, error: String(error) });
+      // Update history with error
+      historyItem.error = String(error);
+      const newHistory = [historyItem, ...queryHistory].slice(0, 50);
+
+      set({
+        isExecuting: false,
+        error: String(error),
+        queryHistory: newHistory,
+      });
     }
   },
 
   clearResult: () => set({ result: null }),
 
   clearError: () => set({ error: null }),
+
+  clearHistory: () => set({ queryHistory: [] }),
 
   // CRUD actions
   loadTableData: async (schema: string, table: string) => {

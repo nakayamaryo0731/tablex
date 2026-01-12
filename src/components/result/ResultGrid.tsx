@@ -1,7 +1,28 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
+import {
+  Plus,
+  Trash2,
+  Save,
+  RotateCcw,
+  RefreshCw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Key,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useQueryStore } from "../../store/queryStore";
 import { EditableCell } from "./EditableCell";
 import { InsertRowDialog } from "./InsertRowDialog";
+import { Button } from "../ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
+import { cn } from "../../lib/utils";
 
 type SortDirection = "asc" | "desc" | null;
 
@@ -153,7 +174,7 @@ export function ResultGrid() {
 
   if (isExecuting || isLoading) {
     return (
-      <div className="flex h-full items-center justify-center text-gray-500">
+      <div className="flex h-full items-center justify-center text-[hsl(var(--muted-foreground))]">
         {isExecuting ? "Executing query..." : "Loading..."}
       </div>
     );
@@ -162,7 +183,7 @@ export function ResultGrid() {
   if (error) {
     return (
       <div className="p-4">
-        <div className="rounded bg-red-100 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
+        <div className="rounded-[var(--radius)] bg-[hsl(var(--destructive))]/10 p-3 text-[13px] text-[hsl(var(--destructive))]">
           {error}
         </div>
       </div>
@@ -174,261 +195,292 @@ export function ResultGrid() {
     const isReadOnly = !tableData.has_primary_key;
 
     return (
-      <div className="flex h-full flex-col overflow-hidden">
-        {isReadOnly && (
-          <div className="bg-yellow-100 px-3 py-1 text-xs text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-            This table has no primary key. Data is read-only.
-          </div>
-        )}
-        <div className="flex-1 overflow-auto">
-          <table className="border-collapse text-sm">
-            <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800">
-              <tr>
-                {!isReadOnly && (
-                  <th className="w-10 border-b border-r border-gray-200 px-2 py-2 dark:border-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedRows.size > 0 &&
-                        selectedRows.size === tableData.rows.length
-                      }
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          useQueryStore.getState().selectAllRows();
-                        } else {
-                          useQueryStore.getState().clearSelection();
+      <TooltipProvider>
+        <div className="flex h-full flex-col overflow-hidden">
+          {isReadOnly && (
+            <div className="bg-[hsl(var(--warning))]/10 px-3 py-1 text-xs text-[hsl(var(--warning))]">
+              This table has no primary key. Data is read-only.
+            </div>
+          )}
+          <div className="flex-1 overflow-auto">
+            <table className="border-collapse text-[13px]">
+              <thead className="sticky top-0 z-10 bg-[hsl(var(--muted))] shadow-[0_1px_0_hsl(var(--border))]">
+                <tr>
+                  {!isReadOnly && (
+                    <th className="w-10 border-b border-r border-[hsl(var(--border))] px-2 py-2">
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedRows.size > 0 &&
+                          selectedRows.size === tableData.rows.length
                         }
-                      }}
-                      className="h-4 w-4"
-                    />
-                  </th>
-                )}
-                {tableData.columns.map((col, i) => (
-                  <th
-                    key={i}
-                    style={{ width: columnWidths[i] || 150, minWidth: 50 }}
-                    className="relative border-b border-r border-gray-200 text-left font-medium dark:border-gray-700"
-                  >
-                    <div
-                      onClick={() => handleSort(i)}
-                      className="cursor-pointer select-none px-3 py-2 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>{col.name}</span>
-                        {col.is_primary_key && (
-                          <span className="text-yellow-500" title="Primary Key">
-                            <svg
-                              className="h-3 w-3"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                            >
-                              <path d="M12.65 10A5.99 5.99 0 0 0 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6a5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
-                            </svg>
-                          </span>
-                        )}
-                        <SortIcon
-                          direction={
-                            sortState.columnIndex === i
-                              ? sortState.direction
-                              : null
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            useQueryStore.getState().selectAllRows();
+                          } else {
+                            useQueryStore.getState().clearSelection();
                           }
-                        />
-                      </div>
-                      <div className="text-xs font-normal text-gray-400">
-                        {col.data_type}
-                        {col.is_auto_generated && " (auto)"}
-                      </div>
-                    </div>
-                    <div
-                      onMouseDown={(e) => handleResizeStart(e, i)}
-                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-blue-500"
-                    />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tableData.rows.map((row) => {
-                const isDeleted = pendingDeletes.has(row.id);
-                const isSelected = selectedRows.has(row.id);
-
-                return (
-                  <tr
-                    key={row.id}
-                    className={`${
-                      isDeleted
-                        ? "bg-red-50 dark:bg-red-900/20"
-                        : isSelected
-                          ? "bg-blue-50 dark:bg-blue-900/20"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }`}
-                  >
-                    {!isReadOnly && (
-                      <td className="border-b border-r border-gray-200 px-2 py-1.5 text-center dark:border-gray-700">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleRowSelection(row.id)}
-                          disabled={isDeleted}
-                          className="h-4 w-4"
-                        />
-                      </td>
-                    )}
-                    {row.values.map((cell, cellIndex) => {
-                      const col = tableData.columns[cellIndex];
-                      const cellKey = `${row.id}:${col.name}`;
-                      const pendingChange = pendingChanges.get(cellKey);
-                      const isModified = !!pendingChange;
-                      const displayValue = isModified
-                        ? pendingChange.newValue
-                        : cell;
-                      const isEditing =
-                        editingCell?.rowId === row.id &&
-                        editingCell?.column === col.name;
-                      const isCellReadOnly =
-                        isReadOnly || col.is_auto_generated;
-
-                      return (
-                        <td
-                          key={cellIndex}
-                          style={{
-                            width: columnWidths[cellIndex] || 150,
-                            minWidth: 50,
-                          }}
-                          className="border-b border-r border-gray-200 px-3 py-1.5 dark:border-gray-700"
-                        >
-                          <EditableCell
-                            value={displayValue}
-                            column={col}
-                            isEditing={isEditing}
-                            isModified={isModified}
-                            isDeleted={isDeleted}
-                            onStartEdit={() =>
-                              setEditingCell({
-                                rowId: row.id,
-                                column: col.name,
-                              })
+                        }}
+                        className="h-4 w-4 rounded border-[hsl(var(--border))]"
+                      />
+                    </th>
+                  )}
+                  {tableData.columns.map((col, i) => (
+                    <th
+                      key={i}
+                      style={{ width: columnWidths[i] || 150, minWidth: 50 }}
+                      className="relative border-b border-r border-[hsl(var(--border))] text-left font-medium"
+                    >
+                      <div
+                        onClick={() => handleSort(i)}
+                        className="cursor-pointer select-none px-3 py-2 hover:bg-[hsl(var(--accent))] transition-colors"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{col.name}</span>
+                          {col.is_primary_key && (
+                            <Key className="h-3 w-3 text-[hsl(var(--tree-icon-key))]" />
+                          )}
+                          <SortIcon
+                            direction={
+                              sortState.columnIndex === i
+                                ? sortState.direction
+                                : null
                             }
-                            onSave={(newValue) =>
-                              updateCell(row.id, col.name, cell, newValue)
-                            }
-                            onCancel={() => setEditingCell(null)}
-                            readOnly={isCellReadOnly}
+                          />
+                        </div>
+                        <div className="text-[11px] font-normal font-[var(--font-mono)] text-[hsl(var(--muted-foreground))]">
+                          {col.data_type}
+                          {col.is_auto_generated && " (auto)"}
+                        </div>
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleResizeStart(e, i)}
+                        className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-[hsl(var(--primary))]"
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="font-[var(--font-mono)]">
+                {tableData.rows.map((row) => {
+                  const isDeleted = pendingDeletes.has(row.id);
+                  const isSelected = selectedRows.has(row.id);
+
+                  return (
+                    <tr
+                      key={row.id}
+                      className={cn(
+                        "transition-colors",
+                        isDeleted
+                          ? "bg-[hsl(var(--destructive))]/10"
+                          : isSelected
+                            ? "bg-[hsl(var(--table-row-selected))]"
+                            : "hover:bg-[hsl(var(--table-row-hover))]"
+                      )}
+                    >
+                      {!isReadOnly && (
+                        <td className="border-b border-r border-[hsl(var(--border))] px-2 py-1.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleRowSelection(row.id)}
+                            disabled={isDeleted}
+                            className="h-4 w-4 rounded border-[hsl(var(--border))]"
                           />
                         </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {/* Bottom toolbar with CRUD buttons and Pagination */}
-        <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800">
-          {/* CRUD Toolbar */}
-          {tableData.has_primary_key ? (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsInsertDialogOpen(true)}
-                className="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
-                title="Add new row"
-              >
-                + Add
-              </button>
-              <button
-                onClick={() => markForDelete(Array.from(selectedRows))}
-                disabled={selectedRows.size === 0}
-                className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Delete selected rows"
-              >
-                Delete
-              </button>
-              <div className="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600" />
-              <button
-                onClick={saveChanges}
-                disabled={!hasPendingChanges || isLoading}
-                className="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Save changes (Ctrl+S)"
-              >
-                {isLoading ? "Saving..." : "Save"}
-              </button>
-              <button
-                onClick={discardChanges}
-                disabled={!hasPendingChanges}
-                className="rounded bg-gray-600 px-2 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Discard changes"
-              >
-                Discard
-              </button>
-              <button
-                onClick={refreshTableData}
-                disabled={isLoading}
-                className="rounded bg-gray-600 px-2 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Refresh data"
-              >
-                Refresh
-              </button>
-            </div>
-          ) : (
-            <span className="text-xs text-gray-500">
-              Read-only (no primary key)
-            </span>
-          )}
+                      )}
+                      {row.values.map((cell, cellIndex) => {
+                        const col = tableData.columns[cellIndex];
+                        const cellKey = `${row.id}:${col.name}`;
+                        const pendingChange = pendingChanges.get(cellKey);
+                        const isModified = !!pendingChange;
+                        const displayValue = isModified
+                          ? pendingChange.newValue
+                          : cell;
+                        const isEditing =
+                          editingCell?.rowId === row.id &&
+                          editingCell?.column === col.name;
+                        const isCellReadOnly =
+                          isReadOnly || col.is_auto_generated;
 
-          {/* Pagination */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">
-              {currentPage * pageSize + 1}-
-              {Math.min((currentPage + 1) * pageSize, tableData.total_count)} of{" "}
-              {tableData.total_count}
-            </span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded border border-gray-300 bg-white px-1 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-700"
-            >
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setPage(currentPage - 1)}
-                disabled={currentPage === 0}
-                className="rounded px-1.5 py-0.5 text-xs hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-gray-700"
+                        return (
+                          <td
+                            key={cellIndex}
+                            style={{
+                              width: columnWidths[cellIndex] || 150,
+                              minWidth: 50,
+                            }}
+                            className="border-b border-r border-[hsl(var(--border))] px-3 py-1.5"
+                          >
+                            <EditableCell
+                              value={displayValue}
+                              column={col}
+                              isEditing={isEditing}
+                              isModified={isModified}
+                              isDeleted={isDeleted}
+                              onStartEdit={() =>
+                                setEditingCell({
+                                  rowId: row.id,
+                                  column: col.name,
+                                })
+                              }
+                              onSave={(newValue) =>
+                                updateCell(row.id, col.name, cell, newValue)
+                              }
+                              onCancel={() => setEditingCell(null)}
+                              readOnly={isCellReadOnly}
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Bottom toolbar with CRUD buttons and Pagination */}
+          <div className="flex items-center justify-between border-t border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-1">
+            {/* CRUD Toolbar */}
+            {tableData.has_primary_key ? (
+              <div className="flex items-center gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => setIsInsertDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Add Row</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => markForDelete(Array.from(selectedRows))}
+                      disabled={selectedRows.size === 0}
+                      className="text-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete Selected</TooltipContent>
+                </Tooltip>
+
+                <div className="mx-1 h-4 w-px bg-[hsl(var(--border))]" />
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={saveChanges}
+                      disabled={!hasPendingChanges || isLoading}
+                      className="text-[hsl(var(--success))] hover:text-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/10"
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Save Changes</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={discardChanges}
+                      disabled={!hasPendingChanges}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Discard Changes</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={refreshTableData}
+                      disabled={isLoading}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refresh</TooltipContent>
+                </Tooltip>
+              </div>
+            ) : (
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                Read-only (no primary key)
+              </span>
+            )}
+
+            {/* Pagination */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                {currentPage * pageSize + 1}-
+                {Math.min((currentPage + 1) * pageSize, tableData.total_count)}{" "}
+                of {tableData.total_count}
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="rounded-[var(--radius-sm)] border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
               >
-                Prev
-              </button>
-              <button
-                onClick={() => setPage(currentPage + 1)}
-                disabled={(currentPage + 1) * pageSize >= tableData.total_count}
-                className="rounded px-1.5 py-0.5 text-xs hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-gray-700"
-              >
-                Next
-              </button>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <div className="flex gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={
+                    (currentPage + 1) * pageSize >= tableData.total_count
+                  }
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Insert Row Dialog */}
-        <InsertRowDialog
-          isOpen={isInsertDialogOpen}
-          onClose={() => setIsInsertDialogOpen(false)}
-          columns={tableData.columns}
-          onInsert={(values) => {
-            addPendingInsert(values);
-            setIsInsertDialogOpen(false);
-          }}
-        />
-      </div>
+          {/* Insert Row Dialog */}
+          <InsertRowDialog
+            isOpen={isInsertDialogOpen}
+            onClose={() => setIsInsertDialogOpen(false)}
+            columns={tableData.columns}
+            onInsert={(values) => {
+              addPendingInsert(values);
+              setIsInsertDialogOpen(false);
+            }}
+          />
+        </div>
+      </TooltipProvider>
     );
   }
 
   // Regular query result mode
   if (!result) {
     return (
-      <div className="flex h-full items-center justify-center text-gray-400">
+      <div className="flex h-full items-center justify-center text-[hsl(var(--muted-foreground))]">
         Run a query to see results
       </div>
     );
@@ -436,7 +488,7 @@ export function ResultGrid() {
 
   if (result.columns.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-gray-500">
+      <div className="flex h-full items-center justify-center text-[hsl(var(--muted-foreground))]">
         Query executed successfully (no results)
       </div>
     );
@@ -445,20 +497,20 @@ export function ResultGrid() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-auto">
-        <table className="border-collapse text-sm">
-          <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800">
+        <table className="border-collapse text-[13px]">
+          <thead className="sticky top-0 z-10 bg-[hsl(var(--muted))] shadow-[0_1px_0_hsl(var(--border))]">
             <tr>
               {result.columns.map((col, i) => (
                 <th
                   key={i}
                   style={{ width: columnWidths[i] || 150, minWidth: 50 }}
-                  className="relative border-b border-r border-gray-200 text-left font-medium dark:border-gray-700"
+                  className="relative border-b border-r border-[hsl(var(--border))] text-left font-medium"
                 >
                   <div
                     onClick={() => handleSort(i)}
-                    className="cursor-pointer select-none px-3 py-2 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    className="cursor-pointer select-none px-3 py-2 hover:bg-[hsl(var(--accent))] transition-colors"
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <span>{col.name}</span>
                       <SortIcon
                         direction={
@@ -468,23 +520,23 @@ export function ResultGrid() {
                         }
                       />
                     </div>
-                    <div className="text-xs font-normal text-gray-400">
+                    <div className="text-[11px] font-normal font-[var(--font-mono)] text-[hsl(var(--muted-foreground))]">
                       {col.data_type}
                     </div>
                   </div>
                   <div
                     onMouseDown={(e) => handleResizeStart(e, i)}
-                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-blue-500"
+                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-[hsl(var(--primary))]"
                   />
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="font-[var(--font-mono)]">
             {sortedRows.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="hover:bg-[hsl(var(--table-row-hover))] transition-colors"
               >
                 {row.map((cell, cellIndex) => (
                   <td
@@ -493,10 +545,12 @@ export function ResultGrid() {
                       width: columnWidths[cellIndex] || 150,
                       minWidth: 50,
                     }}
-                    className="overflow-hidden text-ellipsis whitespace-nowrap border-b border-r border-gray-200 px-3 py-1.5 dark:border-gray-700"
+                    className="overflow-hidden text-ellipsis whitespace-nowrap border-b border-r border-[hsl(var(--border))] px-3 py-1.5"
                   >
                     {cell === null ? (
-                      <span className="italic text-gray-400">NULL</span>
+                      <span className="rounded-[var(--radius-sm)] bg-[hsl(var(--muted))] px-1.5 py-0.5 text-[11px] italic text-[hsl(var(--table-null))]">
+                        NULL
+                      </span>
                     ) : (
                       String(cell)
                     )}
@@ -507,8 +561,8 @@ export function ResultGrid() {
           </tbody>
         </table>
       </div>
-      <div className="border-t border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800">
-        <span className="text-xs text-gray-500">
+      <div className="border-t border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-3 py-1.5">
+        <span className="text-xs text-[hsl(var(--muted-foreground))]">
           {result.row_count} rows in {result.execution_time_ms}ms
         </span>
       </div>
@@ -519,44 +573,13 @@ export function ResultGrid() {
 function SortIcon({ direction }: { direction: SortDirection }) {
   if (!direction) {
     return (
-      <svg
-        className="h-3 w-3 text-gray-300"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-        />
-      </svg>
+      <ArrowUpDown className="h-3 w-3 text-[hsl(var(--muted-foreground))]/50" />
     );
   }
 
-  return (
-    <svg
-      className="h-3 w-3 text-blue-500"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      {direction === "asc" ? (
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M5 15l7-7 7 7"
-        />
-      ) : (
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M19 9l-7 7-7-7"
-        />
-      )}
-    </svg>
+  return direction === "asc" ? (
+    <ArrowUp className="h-3 w-3 text-[hsl(var(--primary))]" />
+  ) : (
+    <ArrowDown className="h-3 w-3 text-[hsl(var(--primary))]" />
   );
 }

@@ -15,6 +15,28 @@ function App() {
   const connectToSaved = useConnectionStore((state) => state.connectToSaved);
   const isConnected = useConnectionStore((state) => state.isConnected);
 
+  // Apply dark mode based on system preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const applyTheme = (isDark: boolean) => {
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    };
+
+    // Apply initial theme
+    applyTheme(mediaQuery.matches);
+
+    // Listen for changes
+    const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
+    mediaQuery.addEventListener("change", handler);
+
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
   useEffect(() => {
     loadSettings();
     checkConnectionStatus();
@@ -40,7 +62,7 @@ function App() {
   }, [isConnected, getDefaultConnection, connectToSaved]);
 
   return (
-    <div className="flex h-screen flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <div className="flex h-screen flex-col bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
       <Header />
       <ResizableLayout />
       <StatusBar />

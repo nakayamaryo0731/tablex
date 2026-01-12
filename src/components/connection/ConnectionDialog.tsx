@@ -1,6 +1,24 @@
 import { useState, useEffect } from "react";
+import { Trash2, Star, Plug } from "lucide-react";
 import type { ConnectionConfig } from "../../types/connection";
 import { useConnectionStore } from "../../store/connectionStore";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
+import { cn } from "../../lib/utils";
 
 interface ConnectionDialogProps {
   isOpen: boolean;
@@ -44,11 +62,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
     }
   }, [isOpen, loadSavedConnections]);
 
-  if (!isOpen) return null;
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
@@ -103,6 +117,15 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
         setIsDefault(saved.is_default);
       }
     }
+    setTestResult(null);
+    clearError();
+  };
+
+  const handleSslModeChange = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      ssl_mode: value as "disable" | "prefer" | "require",
+    }));
     setTestResult(null);
     clearError();
   };
@@ -193,116 +216,111 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800"
-      >
-        <h2 className="mb-4 text-lg font-semibold">Connection</h2>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Connection</DialogTitle>
+        </DialogHeader>
 
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Saved Connections Dropdown */}
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Saved Connections
-            </label>
-            <select
-              value={selectedConnectionId}
-              onChange={(e) => handleSelectConnection(e.target.value)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">Saved Connections</label>
+            <Select
+              value={selectedConnectionId || "new"}
+              onValueChange={(value) =>
+                handleSelectConnection(value === "new" ? "" : value)
+              }
             >
-              <option value="">New Connection</option>
-              {savedConnections.map((conn) => (
-                <option key={conn.id} value={conn.id}>
-                  {conn.name}
-                  {conn.is_default ? " (Default)" : ""}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="Select connection" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="new">New Connection</SelectItem>
+                {savedConnections.map((conn) => (
+                  <SelectItem key={conn.id} value={conn.id}>
+                    {conn.name}
+                    {conn.is_default ? " (Default)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Connection Name
-            </label>
-            <input
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">Connection Name</label>
+            <Input
               type="text"
               name="name"
               value={form.name}
               onChange={handleChange}
               placeholder="My Database"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2">
-              <label className="mb-1 block text-sm font-medium">Host</label>
-              <input
+            <div className="col-span-2 space-y-1.5">
+              <label className="text-[13px] font-medium">Host</label>
+              <Input
                 type="text"
                 name="host"
                 value={form.host}
                 onChange={handleChange}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Port</label>
-              <input
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium">Port</label>
+              <Input
                 type="number"
                 name="port"
                 value={form.port}
                 onChange={handleChange}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
               />
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Database</label>
-            <input
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">Database</label>
+            <Input
               type="text"
               name="database"
               value={form.database}
               onChange={handleChange}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Username</label>
-            <input
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">Username</label>
+            <Input
               type="text"
               name="username"
               value={form.username}
               onChange={handleChange}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Password</label>
-            <input
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">Password</label>
+            <Input
               type="password"
               name="password"
               value={form.password}
               onChange={handleChange}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">SSL Mode</label>
-            <select
-              name="ssl_mode"
-              value={form.ssl_mode}
-              onChange={handleChange}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
-            >
-              <option value="disable">Disable</option>
-              <option value="prefer">Prefer</option>
-              <option value="require">Require</option>
-            </select>
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">SSL Mode</label>
+            <Select value={form.ssl_mode} onValueChange={handleSslModeChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="disable">Disable</SelectItem>
+                <SelectItem value="prefer">Prefer</SelectItem>
+                <SelectItem value="require">Require</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Default checkbox */}
@@ -312,83 +330,104 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
               id="isDefault"
               checked={isDefault}
               onChange={(e) => setIsDefault(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-[hsl(var(--border))] text-[hsl(var(--primary))] focus:ring-[hsl(var(--ring))]"
             />
-            <label htmlFor="isDefault" className="text-sm">
+            <label htmlFor="isDefault" className="text-[13px]">
               Set as default (auto-connect on startup)
             </label>
           </div>
 
           {error && (
-            <div className="rounded bg-red-100 p-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            <div className="rounded-[var(--radius)] bg-[hsl(var(--destructive))]/10 p-2.5 text-[13px] text-[hsl(var(--destructive))]">
               {error}
             </div>
           )}
 
           {testResult === "success" && (
-            <div className="rounded bg-green-100 p-2 text-sm text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            <div className="rounded-[var(--radius)] bg-[hsl(var(--success))]/10 p-2.5 text-[13px] text-[hsl(var(--success))]">
               Connection successful!
             </div>
           )}
-        </div>
 
-        <div className="mt-6 flex justify-between">
-          <div className="flex gap-2">
-            {selectedConnectionId && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="rounded px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-                >
-                  Delete
-                </button>
-                {!isDefault && (
-                  <button
+          <div className="flex justify-between pt-2">
+            <div className="flex gap-1.5">
+              {selectedConnectionId && (
+                <>
+                  <Button
                     type="button"
-                    onClick={handleSetDefault}
-                    className="rounded px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDelete}
+                    className="text-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10"
                   >
-                    Set Default
-                  </button>
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                  {!isDefault && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSetDefault}
+                    >
+                      <Star className="h-4 w-4 mr-1" />
+                      Set Default
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSave}
+                disabled={isConnecting || !form.name}
+                className={cn(
+                  "border-[hsl(var(--success))] text-[hsl(var(--success))]",
+                  "hover:bg-[hsl(var(--success))]/10"
                 )}
-              </>
-            )}
+              >
+                Save
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTest}
+                disabled={isConnecting}
+              >
+                Test
+              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="submit"
+                      size="icon-sm"
+                      disabled={isConnecting}
+                    >
+                      <Plug className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isConnecting ? "Connecting..." : "Connect"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isConnecting || !form.name}
-              className="rounded border border-green-600 px-4 py-2 text-sm font-medium text-green-600 hover:bg-green-50 disabled:opacity-50 dark:hover:bg-green-900/30"
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={isConnecting}
-              className="rounded border border-blue-600 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-900/30"
-            >
-              Test
-            </button>
-            <button
-              type="submit"
-              disabled={isConnecting}
-              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isConnecting ? "Connecting..." : "Connect"}
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

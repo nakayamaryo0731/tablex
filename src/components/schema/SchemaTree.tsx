@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { ChevronRight, Folder, Table2, Columns3, Key } from "lucide-react";
 import { useSchemaStore } from "../../store/schemaStore";
 import { useConnectionStore } from "../../store/connectionStore";
+import { cn } from "../../lib/utils";
 import type { SchemaInfo, TableInfo, ColumnInfo } from "../../types/schema";
 
 interface SchemaTreeProps {
@@ -22,26 +24,38 @@ export function SchemaTree({ onTableSelect }: SchemaTreeProps) {
 
   if (!isConnected) {
     return (
-      <div className="p-4 text-sm text-gray-500">
+      <div className="p-4 text-[13px] text-[hsl(var(--muted-foreground))]">
         Connect to a database to view schema
       </div>
     );
   }
 
   if (isLoading) {
-    return <div className="p-4 text-sm text-gray-500">Loading schemas...</div>;
+    return (
+      <div className="p-4 text-[13px] text-[hsl(var(--muted-foreground))]">
+        Loading schemas...
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="p-4 text-sm text-red-500">{error}</div>;
+    return (
+      <div className="p-4 text-[13px] text-[hsl(var(--destructive))]">
+        {error}
+      </div>
+    );
   }
 
   if (schemas.length === 0) {
-    return <div className="p-4 text-sm text-gray-500">No schemas found</div>;
+    return (
+      <div className="p-4 text-[13px] text-[hsl(var(--muted-foreground))]">
+        No schemas found
+      </div>
+    );
   }
 
   return (
-    <div className="flex-1 overflow-auto p-2">
+    <div className="p-2">
       {schemas.map((schema) => (
         <SchemaNode
           key={schema.name}
@@ -65,17 +79,22 @@ function SchemaNode({ schema, onTableSelect }: SchemaNodeProps) {
     <div>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+        className="flex w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1 text-left text-[13px] hover:bg-[hsl(var(--accent))] transition-colors"
       >
-        <ChevronIcon expanded={isExpanded} />
-        <FolderIcon />
+        <ChevronRight
+          className={cn(
+            "h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] transition-transform duration-200",
+            isExpanded && "rotate-90"
+          )}
+        />
+        <Folder className="h-4 w-4 text-[hsl(var(--tree-icon-schema))]" />
         <span className="font-medium">{schema.name}</span>
-        <span className="ml-auto text-xs text-gray-400">
+        <span className="ml-auto text-[11px] text-[hsl(var(--muted-foreground))]">
           {schema.tables.length}
         </span>
       </button>
       {isExpanded && (
-        <div className="ml-4">
+        <div className="ml-3 border-l border-[hsl(var(--border))] pl-2">
           {schema.tables.map((table) => (
             <TableNode
               key={`${schema.name}.${table.name}`}
@@ -119,24 +138,30 @@ function TableNode({ table, onTableSelect }: TableNodeProps) {
       <button
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
-        className={`flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm ${
+        className={cn(
+          "flex w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1 text-left text-[13px] transition-colors",
           isFocused
-            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-            : "hover:bg-gray-100 dark:hover:bg-gray-700"
-        }`}
+            ? "bg-[hsl(var(--table-row-selected))] ring-1 ring-[hsl(var(--primary))]/30"
+            : "hover:bg-[hsl(var(--accent))]"
+        )}
         title="Click to focus in ER diagram"
       >
-        <span onClick={handleExpandClick}>
-          <ChevronIcon expanded={isExpanded} />
+        <span onClick={handleExpandClick} className="cursor-pointer">
+          <ChevronRight
+            className={cn(
+              "h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] transition-transform duration-200",
+              isExpanded && "rotate-90"
+            )}
+          />
         </span>
-        <TableIcon />
+        <Table2 className="h-4 w-4 text-[hsl(var(--tree-icon-table))]" />
         <span>{table.name}</span>
-        <span className="ml-auto text-xs text-gray-400">
+        <span className="ml-auto text-[11px] text-[hsl(var(--muted-foreground))]">
           {table.columns.length}
         </span>
       </button>
       {isExpanded && (
-        <div className="ml-4">
+        <div className="ml-3 border-l border-[hsl(var(--border))] pl-2">
           {table.columns.map((column) => (
             <ColumnNode
               key={`${table.schema}.${table.name}.${column.name}`}
@@ -151,96 +176,23 @@ function TableNode({ table, onTableSelect }: TableNodeProps) {
 
 function ColumnNode({ column }: { column: ColumnInfo }) {
   return (
-    <div className="flex items-center gap-1 rounded px-2 py-1 text-sm text-gray-600 dark:text-gray-400">
-      {column.is_primary_key ? <KeyIcon /> : <ColumnIcon />}
-      <span className={column.is_primary_key ? "font-medium" : ""}>
+    <div className="flex items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-0.5 text-[12px] text-[hsl(var(--muted-foreground))]">
+      {column.is_primary_key ? (
+        <Key className="h-3.5 w-3.5 text-[hsl(var(--tree-icon-key))]" />
+      ) : (
+        <Columns3 className="h-3.5 w-3.5 text-[hsl(var(--tree-icon-column))]" />
+      )}
+      <span
+        className={cn(
+          "font-[var(--font-mono)]",
+          column.is_primary_key && "font-medium"
+        )}
+      >
         {column.name}
       </span>
-      <span className="ml-auto text-xs text-gray-400">{column.data_type}</span>
+      <span className="ml-auto text-[10px] font-[var(--font-mono)] opacity-60">
+        {column.data_type}
+      </span>
     </div>
-  );
-}
-
-function ChevronIcon({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-90" : ""}`}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 5l7 7-7 7"
-      />
-    </svg>
-  );
-}
-
-function FolderIcon() {
-  return (
-    <svg
-      className="h-4 w-4 text-yellow-500"
-      fill="currentColor"
-      viewBox="0 0 20 20"
-    >
-      <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-    </svg>
-  );
-}
-
-function TableIcon() {
-  return (
-    <svg
-      className="h-4 w-4 text-blue-500"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-      />
-    </svg>
-  );
-}
-
-function ColumnIcon() {
-  return (
-    <svg
-      className="h-4 w-4 text-gray-400"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M4 6h16M4 12h16M4 18h7"
-      />
-    </svg>
-  );
-}
-
-function KeyIcon() {
-  return (
-    <svg
-      className="h-4 w-4 text-yellow-600"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-      />
-    </svg>
   );
 }
