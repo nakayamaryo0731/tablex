@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import "./App.css";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Header, StatusBar, ResizableLayout } from "./components/layout";
 import { useAiStore } from "./store/aiStore";
 import { useConnectionStore } from "./store/connectionStore";
@@ -65,11 +66,15 @@ function App() {
   }, [isConnected, getDefaultConnection, connectToSaved]);
 
   return (
-    <div className="flex h-screen flex-col bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
-      <Header />
-      <ResizableLayout />
-      <StatusBar />
-    </div>
+    <ErrorBoundary>
+      <div className="flex h-screen flex-col bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
+        <Header />
+        <ErrorBoundary>
+          <ResizableLayout />
+        </ErrorBoundary>
+        <StatusBar />
+      </div>
+    </ErrorBoundary>
   );
 }
 
