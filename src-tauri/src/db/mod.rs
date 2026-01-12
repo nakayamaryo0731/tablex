@@ -1,5 +1,6 @@
 mod connection;
 pub mod queries;
+pub mod row_utils;
 pub mod sql_utils;
 
 pub use connection::{ConnectionConfig, DatabaseConnection};
