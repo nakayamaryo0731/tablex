@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   Trash2,
@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useQueryStore } from "../../store/queryStore";
+import { useColumnResize } from "../../hooks/useColumnResize";
 import { EditableCell } from "./EditableCell";
 import { InsertRowDialog } from "./InsertRowDialog";
 import { Button } from "../ui/button";
@@ -67,18 +68,18 @@ export function ResultGrid() {
     columnIndex: null,
     direction: null,
   });
-  const [columnWidths, setColumnWidths] = useState<number[]>([]);
-  const [resizing, setResizing] = useState<{
-    index: number;
-    startX: number;
-    startWidth: number;
-  } | null>(null);
 
-  // Reset sort and column widths when result changes
+  // Get column count from result or tableData
+  const columnCount = result?.columns.length ?? tableData?.columns.length ?? 0;
+  const { columnWidths, handleResizeStart } = useColumnResize(columnCount, {
+    defaultWidth: 150,
+    minWidth: 50,
+  });
+
+  // Reset sort when result changes
   useEffect(() => {
     if (result) {
       setSortState({ columnIndex: null, direction: null });
-      setColumnWidths(result.columns.map(() => 150));
     }
   }, [result]);
 
@@ -122,55 +123,6 @@ export function ResultGrid() {
       return direction === "asc" ? cmp : -cmp;
     });
   }, [result, sortState]);
-
-  const handleResizeStart = useCallback(
-    (e: React.MouseEvent, index: number) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setResizing({
-        index,
-        startX: e.clientX,
-        startWidth: columnWidths[index] || 150,
-      });
-    },
-    [columnWidths]
-  );
-
-  const handleResizeMove = useCallback(
-    (e: MouseEvent) => {
-      if (!resizing) return;
-
-      const diff = e.clientX - resizing.startX;
-      const newWidth = Math.max(50, resizing.startWidth + diff);
-
-      setColumnWidths((prev) => {
-        const next = [...prev];
-        next[resizing.index] = newWidth;
-        return next;
-      });
-    },
-    [resizing]
-  );
-
-  const handleResizeEnd = useCallback(() => {
-    setResizing(null);
-  }, []);
-
-  useEffect(() => {
-    if (resizing) {
-      document.addEventListener("mousemove", handleResizeMove);
-      document.addEventListener("mouseup", handleResizeEnd);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleResizeMove);
-      document.removeEventListener("mouseup", handleResizeEnd);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [resizing, handleResizeMove, handleResizeEnd]);
 
   if (isExecuting || isLoading) {
     return (
