@@ -1,3 +1,4 @@
+use crate::db::sql_utils::{safe_identifier, safe_table_ref};
 use crate::error::AppError;
 use crate::state::AppState;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
@@ -75,18 +76,18 @@ pub async fn get_table_data(
         .collect();
     let has_primary_key = !primary_keys.is_empty();
 
+    // Validate identifiers to prevent SQL injection
+    let table_ref = safe_table_ref(&request.schema, &request.table)?;
+
     // Get total count
-    let count_query = format!(
-        "SELECT COUNT(*) as count FROM \"{}\".\"{}\"",
-        request.schema, request.table
-    );
+    let count_query = format!("SELECT COUNT(*) as count FROM {}", table_ref);
     let count_row = sqlx::query(&count_query).fetch_one(&db.pool).await?;
     let total_count: i64 = count_row.try_get("count")?;
 
     // Get data with pagination
     let data_query = format!(
-        "SELECT * FROM \"{}\".\"{}\" LIMIT {} OFFSET {}",
-        request.schema, request.table, request.limit, request.offset
+        "SELECT * FROM {} LIMIT {} OFFSET {}",
+        table_ref, request.limit, request.offset
     );
     let rows = sqlx::query(&data_query).fetch_all(&db.pool).await?;
 
@@ -123,7 +124,8 @@ pub async fn get_table_row_count(
     let connection = state.connection.lock().await;
     let db = connection.as_ref().ok_or(AppError::NotConnected)?;
 
-    let count_query = format!("SELECT COUNT(*) as count FROM \"{}\".\"{}\"", schema, table);
+    let table_ref = safe_table_ref(&schema, &table)?;
+    let count_query = format!("SELECT COUNT(*) as count FROM {}", table_ref);
     let count_row = sqlx::query(&count_query).fetch_one(&db.pool).await?;
     let count: i64 = count_row.try_get("count")?;
 
@@ -141,6 +143,7 @@ pub async fn insert_rows(
     let connection = state.connection.lock().await;
     let db = connection.as_ref().ok_or(AppError::NotConnected)?;
 
+    let table_ref = safe_table_ref(&schema, &table)?;
     let mut inserted = 0;
 
     for row in rows {
@@ -151,8 +154,8 @@ pub async fn insert_rows(
         let columns: Vec<&String> = row.values.keys().collect();
         let column_names = columns
             .iter()
-            .map(|c| format!("\"{}\"", c))
-            .collect::<Vec<_>>()
+            .map(|c| safe_identifier(c))
+            .collect::<Result<Vec<_>, _>>()?
             .join(", ");
         let placeholders = (1..=columns.len())
             .map(|i| format!("${}", i))
@@ -160,8 +163,8 @@ pub async fn insert_rows(
             .join(", ");
 
         let query = format!(
-            "INSERT INTO \"{}\".\"{}\" ({}) VALUES ({})",
-            schema, table, column_names, placeholders
+            "INSERT INTO {} ({}) VALUES ({})",
+            table_ref, column_names, placeholders
         );
 
         let mut q = sqlx::query(&query);
@@ -188,6 +191,8 @@ pub async fn update_rows(
     let connection = state.connection.lock().await;
     let db = connection.as_ref().ok_or(AppError::NotConnected)?;
 
+    let table_ref = safe_table_ref(&schema, &table)?;
+
     // Get primary keys for the table
     let columns = get_column_info(&db.pool, &schema, &table).await?;
     let primary_keys: Vec<String> = columns
@@ -212,7 +217,10 @@ pub async fn update_rows(
             continue;
         }
 
-        // Build WHERE clause for primary key
+        // Validate column name
+        let safe_column = safe_identifier(&update.column)?;
+
+        // Build WHERE clause for primary key (pk names come from DB, already safe)
         let where_parts: Vec<String> = primary_keys
             .iter()
             .enumerate()
@@ -221,8 +229,8 @@ pub async fn update_rows(
         let where_clause = where_parts.join(" AND ");
 
         let query = format!(
-            "UPDATE \"{}\".\"{}\" SET \"{}\" = $1 WHERE {}",
-            schema, table, update.column, where_clause
+            "UPDATE {} SET {} = $1 WHERE {}",
+            table_ref, safe_column, where_clause
         );
 
         let mut q = sqlx::query(&query);
@@ -252,6 +260,8 @@ pub async fn delete_rows(
     let connection = state.connection.lock().await;
     let db = connection.as_ref().ok_or(AppError::NotConnected)?;
 
+    let table_ref = safe_table_ref(&schema, &table)?;
+
     // Get primary keys for the table
     let columns = get_column_info(&db.pool, &schema, &table).await?;
     let primary_keys: Vec<String> = columns
@@ -276,7 +286,7 @@ pub async fn delete_rows(
             continue;
         }
 
-        // Build WHERE clause for primary key
+        // Build WHERE clause for primary key (pk names come from DB, already safe)
         let where_parts: Vec<String> = primary_keys
             .iter()
             .enumerate()
@@ -284,10 +294,7 @@ pub async fn delete_rows(
             .collect();
         let where_clause = where_parts.join(" AND ");
 
-        let query = format!(
-            "DELETE FROM \"{}\".\"{}\" WHERE {}",
-            schema, table, where_clause
-        );
+        let query = format!("DELETE FROM {} WHERE {}", table_ref, where_clause);
 
         let mut q = sqlx::query(&query);
 
