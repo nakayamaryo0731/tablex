@@ -1,8 +1,10 @@
 import Editor from "@monaco-editor/react";
 import { useQueryStore } from "../../store/queryStore";
+import { useTheme } from "../../hooks/useTheme";
 
 export function SqlEditor() {
   const { query, setQuery } = useQueryStore();
+  const { isDark } = useTheme();
 
   return (
     <Editor
@@ -10,7 +12,7 @@ export function SqlEditor() {
       defaultLanguage="sql"
       value={query}
       onChange={(value) => setQuery(value || "")}
-      theme="vs-dark"
+      theme={isDark ? "vs-dark" : "light"}
       options={{
         minimap: { enabled: false },
         fontSize: 14,

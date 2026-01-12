@@ -16,6 +16,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { TableNode, type TableNodeData } from "./TableNode";
 import { useSchemaStore } from "../../store/schemaStore";
 import { useConnectionStore } from "../../store/connectionStore";
+import { useTheme } from "../../hooks/useTheme";
 import type { ForeignKeyInfo, TableInfo } from "../../types/schema";
 
 const nodeTypes = {
@@ -40,7 +41,8 @@ function applyDagreLayout(
   tables: TableInfo[],
   foreignKeys: ForeignKeyInfo[],
   focusedTableName: string | null,
-  handleFocusTable: (tableName: string) => void
+  handleFocusTable: (tableName: string) => void,
+  edgeColor: string
 ): { nodes: TableNodeType[]; edges: Edge[] } {
   const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
@@ -110,10 +112,10 @@ function applyDagreLayout(
       targetHandle: `${fk.target_column}-target`,
       type: "smoothstep",
       animated: true,
-      style: { stroke: "#6366f1", strokeWidth: 2 },
+      style: { stroke: edgeColor, strokeWidth: 2 },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: "#6366f1",
+        color: edgeColor,
       },
     }));
 
@@ -124,10 +126,15 @@ export function ErDiagram() {
   const { schemas, focusedTable, setFocusedTable, clearFocusedTable } =
     useSchemaStore();
   const { isConnected } = useConnectionStore();
+  const { isDark } = useTheme();
   const [foreignKeys, setForeignKeys] = useState<ForeignKeyInfo[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState<TableNodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedSchema, setSelectedSchema] = useState<string>("public");
+
+  // Theme-aware colors
+  const edgeColor = isDark ? "#60a5fa" : "#3b82f6";
+  const bgColor = isDark ? "#374151" : "#e5e7eb";
 
   // Fetch foreign keys when schema changes
   useEffect(() => {
@@ -206,7 +213,8 @@ export function ErDiagram() {
       filteredTables,
       filteredForeignKeys,
       focusedTableName,
-      handleFocusTable
+      handleFocusTable,
+      edgeColor
     );
 
     setNodes(newNodes);
@@ -219,11 +227,12 @@ export function ErDiagram() {
     relatedTables,
     focusedTableName,
     handleFocusTable,
+    edgeColor,
   ]);
 
   if (!isConnected) {
     return (
-      <div className="flex h-full items-center justify-center text-gray-400">
+      <div className="flex h-full items-center justify-center text-[hsl(var(--muted-foreground))]">
         Connect to a database to view ER diagram
       </div>
     );
@@ -231,7 +240,7 @@ export function ErDiagram() {
 
   if (schemas.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-gray-400">
+      <div className="flex h-full items-center justify-center text-[hsl(var(--muted-foreground))]">
         Loading schemas...
       </div>
     );
@@ -239,8 +248,8 @@ export function ErDiagram() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-4 py-2">
+        <label className="text-sm font-medium text-[hsl(var(--foreground))]">
           Schema:
         </label>
         <select
@@ -249,7 +258,7 @@ export function ErDiagram() {
             setSelectedSchema(e.target.value);
             clearFocusedTable();
           }}
-          className="rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
+          className="rounded-sm border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
         >
           {schemas.map((schema) => (
             <option key={schema.name} value={schema.name}>
@@ -257,19 +266,19 @@ export function ErDiagram() {
             </option>
           ))}
         </select>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-[hsl(var(--muted-foreground))]">
           {tables.length} tables, {foreignKeys.length} relationships
         </span>
 
         {focusedTableName && (
           <>
-            <div className="mx-2 h-4 border-l border-gray-300 dark:border-gray-600" />
-            <span className="text-xs text-yellow-600 dark:text-yellow-400">
+            <div className="mx-2 h-4 border-l border-[hsl(var(--border))]" />
+            <span className="text-xs text-[hsl(var(--warning))]">
               Focused: {focusedTableName}
             </span>
             <button
               onClick={clearFocusedTable}
-              className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              className="rounded-sm bg-[hsl(var(--muted))] px-2 py-0.5 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))]"
             >
               Show All
             </button>
@@ -290,7 +299,7 @@ export function ErDiagram() {
           maxZoom={2}
         >
           <Controls />
-          <Background color="#e5e7eb" gap={16} />
+          <Background color={bgColor} gap={16} />
         </ReactFlow>
       </div>
     </div>

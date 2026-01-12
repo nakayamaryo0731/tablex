@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
+import { useTheme } from "../../hooks/useTheme";
 import type { ColumnInfo } from "../../types/schema";
 
 export interface TableNodeData {
@@ -16,6 +17,7 @@ interface TableNodeProps {
 
 export const TableNode = memo(function TableNode({ data }: TableNodeProps) {
   const { label, columns, isFocused, onFocus } = data;
+  const { isDark } = useTheme();
 
   const handleClick = () => {
     if (onFocus) {
@@ -23,23 +25,25 @@ export const TableNode = memo(function TableNode({ data }: TableNodeProps) {
     }
   };
 
+  const handleColor = isDark ? "#60a5fa" : "#3b82f6";
+
   return (
     <div
       onClick={handleClick}
-      className={`min-w-[180px] cursor-pointer rounded border-2 bg-white shadow-md transition-all dark:bg-gray-800 ${
+      className={`min-w-[180px] cursor-pointer rounded-[var(--radius)] border-2 bg-[hsl(var(--background))] shadow-md transition-all ${
         isFocused
-          ? "border-yellow-500 ring-2 ring-yellow-300"
-          : "border-gray-300 hover:border-blue-400 dark:border-gray-600"
+          ? "border-[hsl(var(--warning))] ring-2 ring-[hsl(var(--warning))]/50"
+          : "border-[hsl(var(--border))] hover:border-[hsl(var(--primary))]"
       }`}
     >
       <div
-        className={`rounded-t px-3 py-2 text-sm font-semibold text-white ${
-          isFocused ? "bg-yellow-600" : "bg-blue-600"
+        className={`rounded-t-[calc(var(--radius)-2px)] px-3 py-2 text-sm font-semibold text-white ${
+          isFocused ? "bg-[hsl(var(--warning))]" : "bg-[hsl(var(--primary))]"
         }`}
       >
         {label}
       </div>
-      <div className="divide-y divide-gray-200 dark:divide-gray-700">
+      <div className="divide-y divide-[hsl(var(--border))]">
         {columns.map((column) => (
           <div
             key={column.name}
@@ -49,28 +53,30 @@ export const TableNode = memo(function TableNode({ data }: TableNodeProps) {
               type="target"
               position={Position.Left}
               id={`${column.name}-target`}
-              style={{ top: "50%", background: "#6366f1" }}
+              style={{ top: "50%", background: handleColor }}
             />
             {column.is_primary_key ? (
-              <KeyIcon className="h-3 w-3 text-yellow-600" />
+              <KeyIcon className="h-3 w-3 text-[hsl(var(--tree-icon-key))]" />
             ) : (
-              <ColumnIcon className="h-3 w-3 text-gray-400" />
+              <ColumnIcon className="h-3 w-3 text-[hsl(var(--muted-foreground))]" />
             )}
             <span
               className={
                 column.is_primary_key
-                  ? "font-medium"
-                  : "text-gray-700 dark:text-gray-300"
+                  ? "font-medium text-[hsl(var(--foreground))]"
+                  : "text-[hsl(var(--foreground))]"
               }
             >
               {column.name}
             </span>
-            <span className="ml-auto text-gray-400">{column.data_type}</span>
+            <span className="ml-auto text-[hsl(var(--muted-foreground))]">
+              {column.data_type}
+            </span>
             <Handle
               type="source"
               position={Position.Right}
               id={`${column.name}-source`}
-              style={{ top: "50%", background: "#6366f1" }}
+              style={{ top: "50%", background: handleColor }}
             />
           </div>
         ))}
