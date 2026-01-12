@@ -6,14 +6,6 @@ mod ollama;
 pub use claude::generate_sql_claude;
 pub use ollama::generate_sql_ollama;
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AiProvider {
-    Claude,
-    Ollama,
-}
-
 pub fn build_system_prompt(schema_context: &str) -> String {
     format!(
         r#"You are a PostgreSQL expert. Generate SQL queries based on user requests.

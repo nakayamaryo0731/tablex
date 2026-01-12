@@ -1,23 +1,9 @@
 use crate::db::row_utils::row_to_values;
 use crate::error::AppError;
 use crate::state::AppState;
-use serde::{Deserialize, Serialize};
+use crate::types::{ColumnMetadata, QueryResult};
 use sqlx::{Column, Row};
 use tauri::State;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueryResult {
-    pub columns: Vec<ColumnMetadata>,
-    pub rows: Vec<Vec<serde_json::Value>>,
-    pub row_count: usize,
-    pub execution_time_ms: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ColumnMetadata {
-    pub name: String,
-    pub data_type: String,
-}
 
 #[tauri::command]
 pub async fn execute_query(

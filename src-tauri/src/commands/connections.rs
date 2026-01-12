@@ -1,5 +1,5 @@
-use crate::db::SslMode;
 use crate::error::AppError;
+use crate::types::{SaveConnectionInput, SavedConnection};
 use keyring::Entry;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -7,19 +7,6 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 const KEYRING_SERVICE: &str = "dbpilot";
-
-/// Saved connection info (password stored separately in keyring)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SavedConnection {
-    pub id: String,
-    pub name: String,
-    pub host: String,
-    pub port: u16,
-    pub database: String,
-    pub username: String,
-    pub ssl_mode: SslMode,
-    pub is_default: bool,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct ConnectionsFile {
@@ -102,20 +89,6 @@ fn delete_password_from_keyring(id: &str) -> Result<(), AppError> {
     let _ = entry.delete_credential();
 
     Ok(())
-}
-
-/// Input for saving a connection (includes password)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SaveConnectionInput {
-    pub id: String,
-    pub name: String,
-    pub host: String,
-    pub port: u16,
-    pub database: String,
-    pub username: String,
-    pub password: String,
-    pub ssl_mode: SslMode,
-    pub is_default: bool,
 }
 
 #[tauri::command]

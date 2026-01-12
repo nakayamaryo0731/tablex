@@ -3,7 +3,7 @@ pub mod queries;
 pub mod row_utils;
 pub mod sql_utils;
 
-pub use connection::{ConnectionConfig, DatabaseConnection};
+pub use connection::DatabaseConnection;
 
-#[allow(unused_imports)]
-pub use connection::SslMode;
+// Re-export types for convenience
+pub use crate::types::ConnectionConfig;

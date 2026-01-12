@@ -1,31 +1,11 @@
 use crate::db::queries;
 use crate::error::AppError;
 use crate::state::AppState;
-use serde::{Deserialize, Serialize};
+use crate::types::{
+    ColumnInfo, ConstraintInfo, ForeignKeyInfo, IndexInfo, SchemaInfo, TableDetailInfo, TableInfo,
+};
 use sqlx::Row;
 use tauri::State;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SchemaInfo {
-    pub name: String,
-    pub tables: Vec<TableInfo>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TableInfo {
-    pub schema: String,
-    pub name: String,
-    pub columns: Vec<ColumnInfo>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ColumnInfo {
-    pub name: String,
-    pub data_type: String,
-    pub is_nullable: bool,
-    pub is_primary_key: bool,
-    pub default_value: Option<String>,
-}
 
 #[tauri::command]
 pub async fn get_schemas(state: State<'_, AppState>) -> Result<Vec<SchemaInfo>, AppError> {
@@ -87,17 +67,6 @@ pub async fn get_schemas(state: State<'_, AppState>) -> Result<Vec<SchemaInfo>, 
     Ok(schemas)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ForeignKeyInfo {
-    pub constraint_name: String,
-    pub source_schema: String,
-    pub source_table: String,
-    pub source_column: String,
-    pub target_schema: String,
-    pub target_table: String,
-    pub target_column: String,
-}
-
 #[tauri::command]
 pub async fn get_foreign_keys(
     schema_name: String,
@@ -125,32 +94,6 @@ pub async fn get_foreign_keys(
         .collect();
 
     Ok(foreign_keys)
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IndexInfo {
-    pub name: String,
-    pub columns: Vec<String>,
-    pub is_unique: bool,
-    pub is_primary: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConstraintInfo {
-    pub name: String,
-    pub constraint_type: String,
-    pub columns: Vec<String>,
-    pub definition: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TableDetailInfo {
-    pub schema: String,
-    pub name: String,
-    pub columns: Vec<ColumnInfo>,
-    pub indexes: Vec<IndexInfo>,
-    pub constraints: Vec<ConstraintInfo>,
-    pub foreign_keys: Vec<ForeignKeyInfo>,
 }
 
 #[tauri::command]

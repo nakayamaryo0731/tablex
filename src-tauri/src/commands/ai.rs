@@ -1,16 +1,6 @@
-use crate::ai::{build_system_prompt, generate_sql_claude, generate_sql_ollama, AiProvider};
+use crate::ai::{build_system_prompt, generate_sql_claude, generate_sql_ollama};
 use crate::error::AppError;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GenerateSqlRequest {
-    pub prompt: String,
-    pub schema_context: String,
-    pub provider: AiProvider,
-    pub api_key: Option<String>,
-    pub ollama_base_url: Option<String>,
-    pub ollama_model: Option<String>,
-}
+use crate::types::{AiProvider, GenerateSqlRequest};
 
 #[tauri::command]
 pub async fn generate_sql(request: GenerateSqlRequest) -> Result<String, AppError> {

@@ -1,18 +1,8 @@
 use crate::error::AppError;
-use serde::{Deserialize, Serialize};
+use crate::types::QueryHistoryItem;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueryHistoryItem {
-    pub id: String,
-    pub query: String,
-    pub executed_at: String, // ISO 8601 format
-    pub row_count: Option<usize>,
-    pub execution_time_ms: Option<u64>,
-    pub error: Option<String>,
-}
 
 fn get_history_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     let app_data_dir = app

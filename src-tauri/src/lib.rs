@@ -3,6 +3,7 @@ mod commands;
 mod db;
 mod error;
 mod state;
+pub mod types;
 
 use state::AppState;
 
@@ -41,4 +42,46 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::types::*;
+    use ts_rs::TS;
+
+    #[test]
+    fn export_bindings() {
+        // Connection types
+        ConnectionConfig::export_all().unwrap();
+        SslMode::export_all().unwrap();
+        SavedConnection::export_all().unwrap();
+        SaveConnectionInput::export_all().unwrap();
+
+        // Query types
+        ColumnMetadata::export_all().unwrap();
+        QueryResult::export_all().unwrap();
+        QueryHistoryItem::export_all().unwrap();
+
+        // Schema types
+        ColumnInfo::export_all().unwrap();
+        TableInfo::export_all().unwrap();
+        SchemaInfo::export_all().unwrap();
+        ForeignKeyInfo::export_all().unwrap();
+        IndexInfo::export_all().unwrap();
+        ConstraintInfo::export_all().unwrap();
+        TableDetailInfo::export_all().unwrap();
+
+        // Table data types
+        TableDataRequest::export_all().unwrap();
+        TableColumnInfo::export_all().unwrap();
+        TableRow::export_all().unwrap();
+        TableData::export_all().unwrap();
+        RowUpdate::export_all().unwrap();
+        RowInsert::export_all().unwrap();
+        RowDelete::export_all().unwrap();
+
+        // AI types
+        AiProvider::export_all().unwrap();
+        GenerateSqlRequest::export_all().unwrap();
+    }
 }

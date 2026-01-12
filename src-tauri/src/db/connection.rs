@@ -1,29 +1,6 @@
-use serde::{Deserialize, Serialize};
+use crate::types::{ConnectionConfig, SslMode};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionConfig {
-    pub id: String,
-    pub name: String,
-    pub host: String,
-    pub port: u16,
-    pub database: String,
-    pub username: String,
-    #[serde(default, skip_serializing)]
-    pub password: String,
-    #[serde(default)]
-    pub ssl_mode: SslMode,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum SslMode {
-    #[default]
-    Disable,
-    Prefer,
-    Require,
-}
 
 impl ConnectionConfig {
     pub fn connection_string(&self) -> String {

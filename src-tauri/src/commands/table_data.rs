@@ -2,61 +2,13 @@ use crate::db::row_utils::{get_column_value, row_to_values};
 use crate::db::sql_utils::{safe_identifier, safe_table_ref};
 use crate::error::AppError;
 use crate::state::AppState;
-use serde::{Deserialize, Serialize};
+use crate::types::{
+    RowDelete, RowInsert, RowUpdate, TableColumnInfo, TableData, TableDataRequest, TableRow,
+};
 use sqlx::postgres::PgRow;
 use sqlx::{Column, Row};
 use std::collections::HashMap;
 use tauri::State;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TableDataRequest {
-    pub schema: String,
-    pub table: String,
-    pub limit: usize,
-    pub offset: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TableColumnInfo {
-    pub name: String,
-    pub data_type: String,
-    pub is_nullable: bool,
-    pub is_primary_key: bool,
-    pub is_auto_generated: bool,
-    pub default_value: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TableRow {
-    pub id: String,
-    pub values: Vec<serde_json::Value>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TableData {
-    pub columns: Vec<TableColumnInfo>,
-    pub rows: Vec<TableRow>,
-    pub total_count: usize,
-    pub primary_keys: Vec<String>,
-    pub has_primary_key: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RowUpdate {
-    pub row_id: String,
-    pub column: String,
-    pub new_value: serde_json::Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RowInsert {
-    pub values: HashMap<String, serde_json::Value>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RowDelete {
-    pub row_id: String,
-}
 
 /// Get table data with pagination
 #[tauri::command]
